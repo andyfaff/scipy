@@ -11,20 +11,6 @@ __all__ = ['differential_evolution']
 
 _MACHEPS = np.finfo(np.float64).eps
 
-#dict specifying whether mutation strategy binomial or exponential.
-#also holds mutation strategies.
-_binomial = {'best1bin': '_best1',
-            'randtobest1bin': '_randtobest1',
-            'best2bin': '_best2',
-            'rand2bin': '_rand2',
-            'rand1bin': '_rand1'}
-
-_exponential = {'best1exp': '_best1',
-               'rand1exp': '_rand1',
-               'randtobest1exp': '_randtobest1',
-               'best2exp': '_best2',
-               'rand2exp': '_rand2'}
-
 
 def differential_evolution(func, bounds, args=(), strategy='best1bin',
                            maxiter=None, popsize=15, tol=0.01,
@@ -302,23 +288,32 @@ class DifferentialEvolutionSolver(object):
             - 'random'
     """
 
+    # Dispatch of mutation strategy method (binomial or exponential).
+    _binomial = {'best1bin': '_best1',
+                 'randtobest1bin': '_randtobest1',
+                 'best2bin': '_best2',
+                 'rand2bin': '_rand2',
+                 'rand1bin': '_rand1'}
+    _exponential = {'best1exp': '_best1',
+                    'rand1exp': '_rand1',
+                    'randtobest1exp': '_randtobest1',
+                    'best2exp': '_best2',
+                    'rand2exp': '_rand2'}
+
+
     def __init__(self, func, bounds, args=(),
-                 strategy=None, maxiter=None, popsize=15,
+                 strategy='best1bin', maxiter=None, popsize=15,
                  tol=0.01, mutation=(0.5, 1), recombination=0.7, seed=None,
                  maxfun=None, callback=None, disp=False, polish=True,
                  init='latinhypercube'):
 
-        if strategy is None:
-            strategy = 'best1bin'
-
-        if strategy in _binomial:
-            self.strategy = strategy
-            self.mutation_func = getattr(self, _binomial[strategy])
-        elif strategy in _exponential:
-            self.strategy = strategy
-            self.mutation_func = getattr(self, _exponential[strategy])
+        if strategy in self._binomial:
+            self.mutation_func = getattr(self, self._binomial[strategy])
+        elif strategy in self._exponential:
+            self.mutation_func = getattr(self, self._exponential[strategy])
         else:
             raise ValueError("Please select a valid mutation strategy")
+        self.strategy = strategy
 
         self.callback = callback
         self.polish = polish
@@ -327,15 +322,14 @@ class DifferentialEvolutionSolver(object):
         #Mutation constant should be in [0, 2). If specified as a sequence
         #then dithering is performed.
         self.scale = mutation
-        if (not np.all(np.isfinite(mutation))
-             or np.any(np.array(mutation) >= 2)
-             or np.any(np.array(mutation) < 0)):
-
+        if (not np.all(np.isfinite(mutation)) or
+                np.any(np.array(mutation) >= 2) or
+                np.any(np.array(mutation) < 0)):
             raise ValueError('The mutation constant must be a float in '
                              'U[0, 2), or specified as a tuple(min, max)'
                              ' where min < max and min, max are in U[0, 2).')
 
-        self.dither = False
+        self.dither = None
         if hasattr(mutation, '__iter__') and len(mutation) > 1:
             self.dither = [mutation[0], mutation[1]]
             self.dither.sort()
@@ -350,15 +344,14 @@ class DifferentialEvolutionSolver(object):
         #     -> [[low_0, ..., low_n], [high_0, ..., high_n]]
         self.limits = np.array(bounds, dtype='float').T
         if (np.size(self.limits, 0) != 2
-             or not np.all(np.isfinite(self.limits))):
+                or not np.all(np.isfinite(self.limits))):
             raise ValueError('bounds should be a sequence containing '
                              'real valued (min, max) pairs for each value'
                              ' in x')
 
         self.maxiter = maxiter or 1000
-        self.maxfun = (maxfun
-                       or ((self.maxiter + 1) * popsize
-                           * np.size(self.limits, 1)))
+        self.maxfun = (maxfun or ((self.maxiter + 1) * popsize *
+                                  np.size(self.limits, 1)))
 
         # population is scaled to between [0, 1].
         # We have to scale between parameter <-> population
@@ -481,8 +474,8 @@ class DifferentialEvolutionSolver(object):
                            success=(warning_flag != True))
 
         # do the optimisation.
-        for iteration in range(self.maxiter):
-            if self.dither:
+        for nit in range(1, self.maxiter + 1):
+            if self.dither is not None:
                 self.scale = self.random_number_generator.rand(
                 ) * (self.dither[1] - self.dither[0]) + self.dither[0]
             for candidate in range(np.size(self.population, 0)):
@@ -512,16 +505,14 @@ class DifferentialEvolutionSolver(object):
                            np.abs(np.mean(self.population_energies) +
                                   _MACHEPS))
 
-            nit = iteration + 1
-
             if self.disp:
                 print("differential_evolution step %d: f(x)= %g"
                       % (nit,
                          self.population_energies[0]))
 
             if (self.callback and
-                self.callback(self._scale_parameters(self.population[0]),
-                             convergence=self.tol / convergence) is True):
+                    self.callback(self._scale_parameters(self.population[0]),
+                                  convergence=self.tol / convergence) is True):
 
                 warning_flag = True
                 status_message = ('callback function requested stop early '
@@ -531,7 +522,7 @@ class DifferentialEvolutionSolver(object):
             if convergence < self.tol or warning_flag:
                 break
 
-        if nit == self.maxiter:
+        else:
             status_message = _status_message['maxiter']
             warning_flag = True
 
@@ -593,13 +584,13 @@ class DifferentialEvolutionSolver(object):
         fill_point = self.random_number_generator.randint(0, parameter_count)
 
         if (self.strategy == 'randtobest1exp'
-             or self.strategy == 'randtobest1bin'):
+                or self.strategy == 'randtobest1bin'):
             bprime = self.mutation_func(candidate,
                                         self._select_samples(candidate, 5))
         else:
             bprime = self.mutation_func(self._select_samples(candidate, 5))
 
-        if self.strategy in _binomial:
+        if self.strategy in self._binomial:
             crossovers = self.random_number_generator.rand(parameter_count)
             crossovers = crossovers < self.cross_over_probability
             # the last one is always from the bprime vector for binomial
@@ -610,7 +601,7 @@ class DifferentialEvolutionSolver(object):
             trial = np.where(crossovers, bprime, trial)
             return trial
 
-        elif self.strategy in _exponential:
+        elif self.strategy in self._exponential:
             i = 0
             while (i < parameter_count and
                    self.random_number_generator.rand() <
