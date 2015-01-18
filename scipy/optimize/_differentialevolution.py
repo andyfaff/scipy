@@ -202,6 +202,25 @@ def differential_evolution(func, bounds, args=(), strategy='best1bin',
     return solver.solve()
 
 
+class HaltError(Exception):
+    def __init__(self, message):
+        super(HaltError, self).__init__(message)
+
+
+def wrapper(f):
+    def inner(**kwds):
+        res = OptimizeResult(x=kwds['x'],
+                             nfev=kwds['nfev'],
+                             nit=kwds['nit'],
+                             fun=kwds['fun'])
+        try:
+            return f(res)
+        except Exception as e:
+            raise HaltError(e.message)
+
+    return inner
+
+
 class DifferentialEvolutionSolver(object):
 
     """This class implements the differential evolution solver
@@ -319,7 +338,10 @@ class DifferentialEvolutionSolver(object):
             raise ValueError("Please select a valid mutation strategy")
         self.strategy = strategy
 
-        self.callback = callback
+        self.callback = None
+        if callable(callback):
+            self.callback = wrapper(callback)
+
         self.polish = polish
         self.tol = tol
 
@@ -514,13 +536,15 @@ class DifferentialEvolutionSolver(object):
                       % (nit,
                          self.population_energies[0]))
 
-            if (self.callback and
-                    self.callback(self._scale_parameters(self.population[0]),
-                                  convergence=self.tol / convergence) is True):
-
-                warning_flag = True
-                status_message = ('callback function requested stop early '
-                                  'by returning True')
+            if self.callback is not None:
+                try:
+                    self.callback(**dict(x=self._scale_parameters(self.population[0]),
+                                         nfev=nfev,
+                                         nit=nit,
+                                         fun=self.population_energies[0]))
+                except HaltError as he:
+                    warning_flag = True
+                    status_message = he.message
                 break
 
             if convergence < self.tol or warning_flag:
@@ -694,3 +718,16 @@ def _make_random_gen(seed):
         return seed
     raise ValueError('%r cannot be used to seed a numpy.random.RandomState'
                      ' instance' % seed)
+
+if __name__ == '__main__':
+    def quadratic(x):
+        return x[0]**2 + x[1] + 1
+
+    def callback(state):
+        print(type(state))
+        if state.fun > 0:
+            raise ValueError('something went wrong, halting')
+
+    bounds = [(1., 2.), (1., 2.)]
+
+    print(differential_evolution(quadratic, bounds, callback=callback))
