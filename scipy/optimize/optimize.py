@@ -3061,6 +3061,474 @@ def show_options(solver=None, method=None, disp=True):
         return text
 
 
+default_options = {'args': (), 'bounds': None, 'x0': None, 'jac': None,
+                   'hess': None, 'maxiter': None, 'maxfun': None, 'disp':False,
+                   'callback': None}
+
+class Optimizer(object):
+    """
+    Class based minimization of scalar functions of one or more variables::
+
+        minimize f(x) subject to
+
+        g_i(x) >= 0,  i = 1,...,m
+        h_j(x)  = 0,  j = 1,...,p
+
+    where x is a vector of one or more variables.
+    ``g_i(x)`` are the inequality constraints.
+    ``h_j(x)`` are the equality constraints.
+
+    Optionally, the lower and upper bounds for each element in x can also be
+    specified using the `bounds` argument.
+    """
+    def __init__(self, func, **options):
+        self.func = func
+
+        default_options.update(options)
+        for k, v in default_options.items():
+            setattr(self, k, v)
+
+        self.x = None
+        self.fun = None
+        self.hess_inv = None
+
+        self.status = 0
+        self.return_all = False
+        self.success = False
+        self.message = None
+        self.warn_flag = 0
+        self.options = {}
+
+        self.nit = 0
+        self.njev = 0
+        self.nhev = 0
+        self.nfev = 0
+        self.maxcv = np.nan
+
+    @property
+    def result(self):
+        """
+        The optimization result represented as a `OptimizeResult` object.
+        Important attributes are: `x` the solution array, `success` a Boolean
+        flag indicating if the optimizer finished successfully and `message`
+        which describes the cause of the termination. See `OptimizeResult`
+        for a description of other attributes.
+        """
+        # override to set other fields.
+        if self.nit == 0:
+            return None
+
+        result = OptimizeResult(
+            x=self.x,
+            fun=self.fun,
+            nfev=self.nfev,
+            nit=self.nit,
+            message=self.message,
+            success=(self.warning_flag is not True and self.converged()))
+        return result
+
+    def __call__(self, iterations):
+        """
+        Advance the solver by a number of steps.
+
+        Parameters
+        ----------
+        iterations: int
+            The number of iterations to perform
+
+        Returns
+        -------
+        result: OptimizeResult
+            The optimization result represented as a OptimizeResult object.
+        """
+        # TODO interupt once convergence is reached?
+        for it in range(iterations):
+            self.x, self.fun = next(self)
+
+        self._finish_up()
+        return self.result
+
+    @property
+    def N(self):
+        """
+        The dimensionality of the problem, `np.size(x)`.
+        """
+        if self.x is not None:
+            return self.x.size
+        elif self.x0 is not None:
+            return self.x0.size
+        else:
+            return RuntimeError("Cannot determine problem size at this time,"
+                                " perform at least one iteration")
+
+    def solve(self):
+        """
+        Run the solver through to completion.
+
+        Returns
+        -------
+        result: OptimizeResult
+            The optimization result represented as a `OptimizeResult` object.
+            Important attributes are: `x` the solution array, `success` a
+            Boolean flag indicating if the optimizer exited successfully and
+            `message` which describes the cause of the termination. See
+            `OptimizeResult` for a description of other attributes.
+        """
+        for x, fun in self:
+            self.x, self.fun = x, fun
+
+            if (self.converged() or self.nfev >= self.maxfun or
+                    self.nit >= self.maxiter):
+                break
+
+        self._finish_up()
+        return self.result
+
+    def converged(self):
+        """
+        The truth of whether the solver has converged.
+        """
+        raise NotImplementedError
+
+    def __iter__(self):
+        return self
+
+    def __next__(self):
+        """
+        Advance the solver by a single iteration.
+        """
+        # Should be over-ridden by each class based solver.
+        raise NotImplementedError
+    next = step = __next__
+
+    def _call_func(self, x):
+        val = self.func(x, *self.args)
+        self.nfev += 1
+        return val
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *args):
+        self._finish_up()
+
+    def _callback(self):
+        if self.callback is not None:
+            self.callback(self.x)
+
+    def _finish_up(self):
+        """
+        Each class based solver should override this to define end-of-run
+        actions. This includes setting the `message` status, `warn_flag`,
+        `success`, etc. It gets called at the end of the `solve` and `__call__`
+        methods, and during `__exit__` of the context manager.
+        """
+        pass
+
+    def show_options(self):
+        # each optimizer should return their own options text.
+        return ""
+
+
+class Optimize_neldermead(Optimizer):
+    """
+    Minimize a function using the downhill simplex algorithm.
+
+    This algorithm only uses function values, not derivatives or second
+    derivatives.
+
+    Parameters
+    ----------
+    func : callable func(x,*args)
+        The objective function to be minimized.
+    x0 : ndarray
+        Initial guess.
+    args : tuple, optional
+        Extra arguments passed to func, i.e. ``f(x, *args)``.
+    xatol : float, optional
+        Absolute error in xopt between iterations that is acceptable for
+        convergence.
+    fatol : number, optional
+        Absolute error in func(xopt) between iterations that is acceptable for
+        convergence.
+    maxiter : int, optional
+        Maximum number of iterations to perform.
+    maxfun : number, optional
+        Maximum number of function evaluations to make.
+    disp : bool, optional
+        Set to True to print convergence messages.
+    callback : callable, optional
+        Called after each iteration, as callback(xk), where xk is the
+        current parameter vector.
+    initial_simplex : array_like of shape (N + 1, N), optional
+        Initial simplex. If given, overrides `x0`.
+        ``initial_simplex[j,:]`` should contain the coordinates of
+        the j-th vertex of the ``N+1`` vertices in the simplex, where
+        ``N`` is the dimension.
+
+    Returns
+    -------
+    xopt : ndarray
+        Parameter that minimizes function.
+    fopt : float
+        Value of function at minimum: ``fopt = func(xopt)``.
+    iter : int
+        Number of iterations performed.
+    funcalls : int
+        Number of function calls made.
+    warnflag : int
+        1 : Maximum number of function evaluations made.
+        2 : Maximum number of iterations reached.
+    allvecs : list
+        Solution at each iteration.
+
+    See also
+    --------
+    minimize: Interface to minimization algorithms for multivariate
+        functions. See the 'Nelder-Mead' `method` in particular.
+
+    Notes
+    -----
+    Uses a Nelder-Mead simplex algorithm to find the minimum of function of
+    one or more variables.
+
+    This algorithm has a long history of successful use in applications.
+    But it will usually be slower than an algorithm that uses first or
+    second derivative information. In practice it can have poor
+    performance in high-dimensional problems and is not robust to
+    minimizing complicated functions. Additionally, there currently is no
+    complete theory describing when the algorithm will successfully
+    converge to the minimum, or how fast it will if it does. Both the ftol and
+    xtol criteria must be met for convergence.
+
+    Examples
+    --------
+    >>> def f(x):
+    ...     return x**2
+
+    >>> from scipy import optimize
+
+    >>> minimum = optimize.fmin(f, 1)
+    Optimization terminated successfully.
+             Current function value: 0.000000
+             Iterations: 17
+             Function evaluations: 34
+    >>> minimum[0]
+    -8.8817841970012523e-16
+
+    References
+    ----------
+    .. [1] Nelder, J.A. and Mead, R. (1965), "A simplex method for function
+           minimization", The Computer Journal, 7, pp. 308-313
+
+    .. [2] Wright, M.H. (1996), "Direct Search Methods: Once Scorned, Now
+           Respectable", in Numerical Analysis 1995, Proceedings of the
+           1995 Dundee Biennial Conference in Numerical Analysis, D.F.
+           Griffiths and G.A. Watson (Eds.), Addison Wesley Longman,
+           Harlow, UK, pp. 191-208.
+
+    """
+    def __init__(self, func, x0, args=(), xatol=1e-4, fatol=1e-4, maxiter=None,
+                 maxfun=None, disp=True, callback=None,
+                 initial_simplex=None, adaptive=False, **unknown_options):
+
+        options = {'disp': disp,
+                   'callback': callback,
+                   'x0': asfarray(x0).flatten(),
+                   'args': args}
+
+        super(Optimize_neldermead, self).__init__(func, **options)
+        _check_unknown_options(unknown_options)
+
+        self.xatol = xatol
+        self.fatol = fatol
+        self.adaptive = adaptive
+        self.initial_simplex = initial_simplex
+        self.simplex = None
+        self.f_simplex = None
+
+        N = self.N
+
+        # If neither are set, then set both to default
+        if maxiter is None and maxfun is None:
+            self.maxiter = N * 200
+            self.maxfun = N * 200
+        elif maxiter is None:
+            # Convert remaining Nones, to np.inf, unless the other is np.inf, in
+            # which case use the default to avoid unbounded iteration
+            if maxfun == np.inf:
+                self.maxiter = N * 200
+            else:
+                self.maxiter = np.inf
+        elif maxfun is None:
+            if maxiter == np.inf:
+                self.maxfun = N * 200
+            else:
+                self.maxfun = np.inf
+
+        self.rho = 1
+        self.chi = 2
+        self.psi = 0.5
+        self.sigma = 0.5
+
+        if self.adaptive:
+            self.chi = 1 + 2. / N
+            self.psi = 0.75 - 1 / (2. * N)
+            self.sigma = 1 - 1. / N
+
+        nonzdelt = 0.05
+        zdelt = 0.00025
+
+        if initial_simplex is None:
+            self.simplex = numpy.zeros((N + 1, N), dtype=self.x0.dtype)
+            self.simplex[0] = self.x0
+            for k in range(N):
+                y = numpy.array(self.x0, copy=True)
+                if y[k] != 0:
+                    y[k] = (1 + nonzdelt) * y[k]
+                else:
+                    y[k] = zdelt
+                self.simplex[k + 1] = y
+        else:
+            self.simplex = np.asfarray(initial_simplex).copy()
+            if (self.simplex.ndim != 2 or
+                self.simplex.shape[0] != self.simplex.shape[1] + 1):
+                raise ValueError("`initial_simplex` should be an array of shape (N+1,N)")
+            if N != self.simplex.shape[1]:
+                raise ValueError("Size of `initial_simplex` is not consistent with `x0`")
+
+        self.f_simplex = numpy.zeros((N + 1,), float)
+
+    def converged(self):
+        sim = self.simplex
+        fsim = self.f_simplex
+
+        if (numpy.max(numpy.ravel(numpy.abs(sim[1:] - sim[0]))) <= self.xatol and
+                numpy.max(numpy.abs(fsim[0] - fsim[1:])) <= self.fatol):
+            return True
+        return False
+
+    def __next__(self):
+        sim = self.simplex
+        fsim = self.f_simplex
+        N = self.N
+
+        if self.nit == 0:
+            for k in range(N + 1):
+                fsim[k] = self._call_func(sim[k])
+
+            ind = numpy.argsort(fsim)
+            self.f_simplex = numpy.take(fsim, ind, 0)
+
+            # sort so simplex[0,:] has the lowest function value
+            self.simplex = numpy.take(sim, ind, 0)
+
+            self.nit = 1
+            self.x = self.simplex[0]
+            self.fun = np.min(self.f_simplex)
+            self._callback()
+            return self.x, self.fun
+
+        rho = self.rho
+        chi = self.chi
+        psi = self.psi
+        sigma = self.sigma
+
+        xbar = numpy.add.reduce(sim[:-1], 0) / N
+        xr = (1 + rho) * xbar - rho * sim[-1]
+        fxr = self._call_func(xr)
+        doshrink = 0
+
+        if fxr < fsim[0]:
+            xe = (1 + rho * chi) * xbar - rho * chi * sim[-1]
+            fxe = self._call_func(xe)
+
+            if fxe < fxr:
+                sim[-1] = xe
+                fsim[-1] = fxe
+            else:
+                sim[-1] = xr
+                fsim[-1] = fxr
+        else:  # fsim[0] <= fxr
+            if fxr < fsim[-2]:
+                sim[-1] = xr
+                fsim[-1] = fxr
+            else:  # fxr >= fsim[-2]
+                # Perform contraction
+                if fxr < fsim[-1]:
+                    xc = (1 + psi * rho) * xbar - psi * rho * sim[-1]
+                    fxc = self._call_func(xc)
+
+                    if fxc <= fxr:
+                        sim[-1] = xc
+                        fsim[-1] = fxc
+                    else:
+                        doshrink = 1
+                else:
+                    # Perform an inside contraction
+                    xcc = (1 - psi) * xbar + psi * sim[-1]
+                    fxcc = self._call_func(xcc)
+
+                    if fxcc < fsim[-1]:
+                        sim[-1] = xcc
+                        fsim[-1] = fxcc
+                    else:
+                        doshrink = 1
+
+                if doshrink:
+                    for j in range(1, N + 1):
+                        sim[j] = sim[0] + sigma * (sim[j] - sim[0])
+                        fsim[j] = self._call_func(sim[j])
+
+        ind = numpy.argsort(fsim)
+        self.simplex = numpy.take(sim, ind, 0)
+        self.f_simplex = numpy.take(fsim, ind, 0)
+
+        self.x = self.simplex[0]
+        self.fun = np.min(self.f_simplex)
+
+        self._callback()
+
+        self.nit += 1
+
+        return self.x, self.fun
+
+    @property
+    def result(self):
+        result = OptimizeResult(fun=self.fun,
+                                nit=self.nit,
+                                nfev=self.nfev,
+                                status=self.warn_flag,
+                                success=(self.warn_flag == 0 and
+                                         self.converged()),
+                                message=self.message,
+                                x=self.x,
+                                final_simplex=(self.simplex,
+                                               self.f_simplex))
+        return result
+
+    def _finish_up(self):
+        if self.nfev >= self.maxfun:
+            self.warn_flag = 1
+            self.message = _status_message['maxfev']
+            if self.disp:
+                print('Warning: ' + self.message)
+        elif self.nit >= self.maxiter:
+            self.warn_flag = 2
+            self.message = _status_message['maxiter']
+            if self.disp:
+                print('Warning: ' + self.message)
+        else:
+            self.message = _status_message['success']
+            if self.disp:
+                print(self.message)
+                print("         Current function value: %f" % self.fun)
+                print("         Iterations: %d" % self.nit)
+                print("         Function evaluations: %d" % self.nfev)
+
+        return self.result
+
+
 def main():
     import time
 
