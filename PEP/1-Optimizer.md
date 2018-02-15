@@ -5,7 +5,7 @@ Scientific PEP - Introduction of Optimizer classes
 * Introduction
     * Here's what minimization does...
         * It minimizes a function
-        * These are fairly independent -- functions and optimizers are not tied together.
+        * These are -or should be- fairly independent -- functions and optimizers are not tied together.
     * Point to users of...
         * Minimization in general
         * scipy.optimize.minimize (many users, do a github search)
@@ -16,7 +16,7 @@ Scientific PEP - Introduction of Optimizer classes
         * Providing a standard interface for this could help unify users and libraries
     * Current API needs improvement
        * scipy.optimize.minimize is a black box (have to explain why)
-           * hides all details. Some are literal black boxes and implemented in Fortrain/C.
+           * hides all details. Some are literal black boxes and implemented in Fortran/C.
            * would like ability to proceed stepwise through iteration
                * Callback is not sufficient
                    * only sends `x`, not the potentially expensive `f(x), g(x), h(x)`.
@@ -25,10 +25,19 @@ Scientific PEP - Introduction of Optimizer classes
            * would like to access solver state
                * e.g., current value of f(x)
                * e.g., for coding gradients
-          * can't access to solver state or hyper parameters, and change on fly
-              * e.g., gradient coding as example
-              * e.g, change convergence tolerances as we're going
-              * e.g., change mutation constant during differential evolution.
+           * there is no separation of concerns between function and minimizer, e.g. the minimizer is carrying out numerical
+             gradient calculations. The correct place for grad computation belongs with the function, not the minimizer.
+           * if the user doesn't provide a gradient function the minimizers currently use the same absolute step size
+             for numerical differentiation for the duration of the minimization. However, the fd-step size should
+             be relative to parameter value as it changes. Not easy to fix this in current implementation without placing
+             the onus on the user to write their own grad function, this is the job of the library.
+             The new Function object will offer more options for numerical differentiation (absolute step, relative
+             step, 2-point/3-point/complex step, bounds). Of course, the user can still provide their own gradient
+             implementation if preferred.
+         * can't access solver state or hyper parameters, and change on fly
+              * e.g. gradient coding as example
+              * e.g. change convergence tolerances as we're going
+              * e.g. change mutation constant during differential evolution.
        * addition of new features to minimizers leads to lengthy functions and lots of duplicate code.
            * Classes => inherietance. Base class improves => all improve.
            * Unix philisophy, small sharp tools for one job and one job only. Not many dull tools for the same job.
@@ -45,6 +54,10 @@ Scientific PEP - Introduction of Optimizer classes
     * Goal:
         * provide minimal class interface
         * preserve backwards compatibility
+        * targetted at minimization of scalar functions to start with, although the Optimizer class and its methods should
+          be a suitable base class for implementing for class based root and least-squares solvers. For example, both of
+          those examples need to iterate, they both finish up with an OptimizeResult, they both have convergence criteria,
+          etc.
 * Solution enhancements
     * Provide standard interface
         * for enhancements to sklearn, dask-ml, etc. Possibly PyTorch. **Would those projects be prepared to state that?**
