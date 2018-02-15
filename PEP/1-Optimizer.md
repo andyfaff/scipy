@@ -17,6 +17,18 @@ Scientific PEP - Introduction of Optimizer classes
     * Current API needs improvement
        * scipy.optimize.minimize is a black box (have to explain why)
            * hides all details. Some are literal black boxes and implemented in Fortran/C.
+               * e.g., what if want to change step size? Choosing an initial step size is difficult. There's theoritical
+                 bounds, but these are not known in practice.
+               * if the user doesn't provide a gradient function the minimizers currently use the same absolute step size
+                   for numerical differentiation for the duration of the minimization. However, the fd-step size should
+                   be relative to parameter value as it changes. Not easy to fix this in current implementation without placing
+                   the onus on the user to write their own grad function, this is the job of the library.
+                   The new Function object will offer more options for numerical differentiation (absolute step, relative
+                   step, 2-point/3-point/complex step, bounds). Of course, the user can still provide their own gradient
+                   implementation if preferred.
+           * there is no separation of concerns between function and minimizer
+               * meaning the minimizer is carrying out numerical gradient calculations.
+               * The correct place for grad computation belongs with the function, not the minimizer.
            * would like ability to proceed stepwise through iteration
                * Callback is not sufficient
                    * only sends `x`, not the potentially expensive `f(x), g(x), h(x)`.
@@ -25,15 +37,7 @@ Scientific PEP - Introduction of Optimizer classes
            * would like to access solver state
                * e.g., current value of f(x)
                * e.g., for coding gradients
-           * there is no separation of concerns between function and minimizer, e.g. the minimizer is carrying out numerical
-             gradient calculations. The correct place for grad computation belongs with the function, not the minimizer.
-           * if the user doesn't provide a gradient function the minimizers currently use the same absolute step size
-             for numerical differentiation for the duration of the minimization. However, the fd-step size should
-             be relative to parameter value as it changes. Not easy to fix this in current implementation without placing
-             the onus on the user to write their own grad function, this is the job of the library.
-             The new Function object will offer more options for numerical differentiation (absolute step, relative
-             step, 2-point/3-point/complex step, bounds). Of course, the user can still provide their own gradient
-             implementation if preferred.
+
          * can't access solver state or hyper parameters, and change on fly
               * e.g. gradient coding as example
               * e.g. change convergence tolerances as we're going
