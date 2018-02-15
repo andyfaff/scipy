@@ -34,26 +34,31 @@ Scientific PEP - Introduction of Optimizer classes
            * Unix philisophy, small sharp tools for one job and one job only. Not many dull tools for the same job.
        * Mixing of function arguments with optimization arguments (plus, there are too many arguments)
        * examine scipy issues database to see what issues would be cleaned up.
-           * #5832, grad.T should be returned.
+           * #5832, grad.T should be returned but not documented
        * no kwargs for func, only args
 * Other solutions
     * Class defs: PyTorch, skopt
     * Functional class wrapper around minimize: statsmodels, astropy, scikits.fitting
     * Functional defs: sklearn, daskml
 * Solution
-    * Classes (briefly list attributes, functions)
-    * Goal: provide minimal class for interface.
+    * Classes (idea: `Function` and `Optimizer` class)
+    * Goal:
+        * provide minimal class interface
+        * preserve backwards compatibility
 * Solution enhancements
     * Provide standard interface
         * for enhancements to sklearn, dask-ml, etc. Possibly PyTorch. **Would those projects be prepared to state that?**
         * it would provide a standard way to operate the object, but all the classes would still have different names
+        * give example of how sklearn could revamp (ask the developers how they'd use it)
     * Provide class features
         * object interaction. Useful for experts, intermediates.
         * expose alg hyperparameters (grid search, etc)
         * keyboard interrupts
+        * introduction of context manager enables easy setup of cleanup actions
+           * would make it easier have wholesale introduction of things like multiprocessing.
+           * We should think about multiprocessing or multithreaded algorithms like Hogwild!. How will these be used?
    * Clean up minimize API (it's complicated right now)
-   * introduction of context manager enables easy setup of cleanup actions
-       * would make it easier have wholesale introduction of things like multiprocessing.
+      * Require fewer arguments to minimize, and separate them
 * Solution implementation
     * Give an example
     * List functions, attributes in more depth
