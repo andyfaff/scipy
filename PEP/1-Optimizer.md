@@ -15,6 +15,20 @@ Scientific PEP - Introduction of Optimizer classes
         * Minimization is a common problem and implemented in many places
         * Providing a standard interface for this could help unify users and libraries
     * Current API needs improvement
+       * minimize is trying to be a class
+              * method: should be subclasses
+              * show_options: show method-specific args
+              * some options specific to method (jac, hess, hessp, contraints, options, bounds)
+              * OptimizeResult: trying to expose what should be properties of class
+              * callback: not adequate (only sends one arg, not any internal state)
+                   * only sends `x`, not the potentially expensive `f(x), g(x), h(x)`.
+                   * What if some internal state is wanted?
+       * function arg is trying to be a class
+           * jac, hess, hessp
+           * args (kwargs?)
+       * there is no separation of concerns between function and minimizer
+               * meaning the minimizer is carrying out numerical gradient calculations.
+               * The correct place for grad computation belongs with the function, not the minimizer.
        * scipy.optimize.minimize is a black box (have to explain why)
            * hides all details. Some are literal black boxes and implemented in Fortran/C.
                * e.g., what if want to change step size? Choosing an initial step size is difficult. There's theoritical
@@ -26,19 +40,12 @@ Scientific PEP - Introduction of Optimizer classes
                    The new Function object will offer more options for numerical differentiation (absolute step, relative
                    step, 2-point/3-point/complex step, bounds). Of course, the user can still provide their own gradient
                    implementation if preferred.
-           * there is no separation of concerns between function and minimizer
-               * meaning the minimizer is carrying out numerical gradient calculations.
-               * The correct place for grad computation belongs with the function, not the minimizer.
            * would like ability to proceed stepwise through iteration
-               * Callback is not sufficient
-                   * only sends `x`, not the potentially expensive `f(x), g(x), h(x)`.
-                   * What if some internal state is wanted?
                * What if running some web server, and don't have time to wait for minimization to finish?
            * would like to access solver state
                * e.g., current value of f(x)
                * e.g., for coding gradients
-
-         * can't access solver state or hyper parameters, and change on fly
+           * can't access solver state or hyper parameters, and change on fly
               * e.g. gradient coding as example
               * e.g. change convergence tolerances as we're going
               * e.g. change mutation constant during differential evolution.
