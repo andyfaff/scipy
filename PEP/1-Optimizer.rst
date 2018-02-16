@@ -39,8 +39,8 @@ Scientific PEP -- Introduction of Optimizer and Function classes
                     bounds, but these are not known in practice.
                   * if the user doesn't provide a gradient function the minimizers currently use the same absolute step size
                       for numerical differentiation for the duration of the minimization. However, the fd-step size should
-                      be relative to parameter value as it changes. Not easy to fix this in current implementation without placing
-                      the onus on the user to write their own grad function, this is the job of the library.
+                      be relative to parameter value as it changes. Not easy to fix this in current implementation without 
+                      placing the onus on the user to write their own grad function, this is the job of the library.
                       The new Function object will offer more options for numerical differentiation (absolute step, relative
                       step, 2-point/3-point/complex step, bounds). Of course, the user can still provide their own gradient
                       implementation if preferred.
@@ -54,7 +54,13 @@ Scientific PEP -- Introduction of Optimizer and Function classes
                      * e.g. change convergence tolerances as we're going
                      * e.g. change mutation constant during differential evolution.
           * addition of new features to minimizers leads to lengthy functions and lots of duplicate code.
-              * Classes => inherietance. Base class improves => all improve.
+              * Classes => inheritance. Base class improves => all improve. For example, placing numerical differentiation in 
+              the Function class allows either absolute or relative delta change to be made easily, and in one place. To do 
+              that for all minimizers would require modifications and extra keywords to all minimizer functions with the 
+              attendant risk of introducing bugs in lots of places. Testing those changes is a lot harder.
+              * With Optimizer objects testing can be made a lot easier. If the base class is tested thoroughly then 
+              subclasses with inherited methods are by definition covered. This is not the case for a multiplicity of 
+              minimizer functions.
               * Unix philisophy, small sharp tools for one job and one job only. Not many dull tools for the same job.
           * examine scipy issues database to see what issues would be cleaned up.
               * #5832, grad.T should be returned but not documented
@@ -203,23 +209,23 @@ Proposed code
     def callback(x): print(x)
 
     # existing call has lots of parameters, mixing optimizer args with func args
-
-    result = minimize(func, x0, args=(2,), jac=jac, method='BFGS',
-    maxiter=10, callback=callback)
+    # it might be nice to have **kwds as well, but not possible with current approach
+    result = minimize(func, x0, args=(2,), jac=grad, method='BFGS', maxiter=10, callback=callback)
 
     # proposed
 
-    function = Function(func=func, args=(2,), kwargs=kwargs, jac=jac) opt =
-    BFGS(function, x0) result = opt.solve(maxiter=10, callback=callback)
+    function = Function(func=func, args=(2,), kwargs=kwargs, grad=grad)
+    opt = BFGS(function, x0)
+    result = opt.solve(maxiter=10, callback=callback)
 
     # could also have
-
     result = BFGS(function, x0).solve(maxiter=10, callback=callback)
 
     # alternatively control how iteration occurs
-
-    d = opt.hyper\_parameters for i, v in enumerate(opt): x, f = v print(i,
-    f, x) d['my\_hyper\_parameter'] = np.inf
+    d = opt.hyper_parameters
+    for i, v in enumerate(opt):
+      x, f = v print(i, f, x)
+      d['my_hyper_parameter'] = np.inf
 
     # use function classes encapsulates the whole function and offers the potential for more sophisticated calculation.
 
@@ -239,12 +245,9 @@ Proposed code
 
     opt = BFGS(function, x0).solve(maxiter=10)
 
-    # context managers offer the chance for cleanup actions, for example
-    multiprocessing.
+    # context managers offer the chance for cleanup actions, for example multiprocessing.
 
-    with DifferentialEvolutionSolver(function, bounds,
-    workers=2) as opt:
-        # the __entry__ and __exit__ in the solver can create
-    and close
+    with DifferentialEvolutionSolver(function, bounds, workers=2) as opt:
+        # the __entry__ and __exit__ in the solver can create and close
         # multiprocessing pools.
         res = opt.solve()
