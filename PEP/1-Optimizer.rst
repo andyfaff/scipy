@@ -104,8 +104,8 @@ Introduction
 ============
 
 Optimization is extremely common and often critical in many
-applications. Imaging, machine learning, industrial engineering and a
-variety of regression problems. As such, it has been adopted by
+applications. Imaging, machine learning and regression problems 
+all depend on optimization. As such, it has been adopted by
 libraries including SciPy and many related libraries (e.g.,
 scikit-learn). Optimization has received significant attention from
 industry as well -- Google, Facebook, Amazon and Microsoft have
@@ -118,11 +118,14 @@ argument yields the smallest function value, or in pseudo-code,
 
 .. code:: python
 
+    import numpy as np
+    from scipy.optimize import minimize
+    
     def f(x):
         return (x - 1) ** 2
 
-    x_hat = minimize(f)
-    assert x_hat == 1 and f(x_hat) == 0
+    result = minimize(f)
+    assert np.allclose(result.x, 1) and np.allclose(result.fun, 0)
 
 The SciPy ``minimize`` function has been widely used. Over 17,000
 results for "``from scipy.optimize import minimize``" appear from a
