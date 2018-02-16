@@ -122,6 +122,11 @@ Scientific PEP -- Introduction of Optimizer and Function classes
        * Functional defs: sklearn, daskml, skimage
    * Proposed solution
        * Classes (idea: `Function` and `Optimizer` class)
+           * `Optimizer` - takes care of minimization and stepping
+           * `Function` - takes care of evaluating function, gradient, and hessian. Takes care of numerical differentiation
+             for grad and hess if required. Can be overridden if the user wishes to define their own grad/hess
+             implementations. This pattern is intrinsic, and is sort of **already in use** in scipy at
+             scipy/benchmarks/benchmarks/test_functions.py.
        * Goal:
            * provide minimal class interface
            * preserve backwards compatibility
