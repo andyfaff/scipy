@@ -14,6 +14,9 @@ Scientific PEP -- Introduction of Optimizer and Function classes
    * Motivation
        * No standard interface for optimizers or functions.
            * Have to explain why minimize isn't a standard interface.
+               * Currently there is a hotch potch of warn_flag numbers that indicate problems when a minimizer stops. Using
+                 an Optimizer class could standardise these. See #7819 for discussion on this. The Optimizer class could
+                 return an 
            * Minimization is a common problem and implemented in many places
            * Providing a standard interface for this could help unify users and libraries
        * Current API needs improvement
@@ -24,6 +27,9 @@ Scientific PEP -- Introduction of Optimizer and Function classes
                  * OptimizeResult: trying to expose what should be properties of class
                  * callback: not adequate (only sends one arg, not any internal state)
                       * only sends `x`, not the potentially expensive `f(x), g(x), h(x)`.
+                          **the opposing argument here is that we could just add extra solver state information to the**
+                          **callback. ironically the easiest way to achieve this by using Optimizer objects, where**
+                          **once you've implemented a change to the base class all Optimizers access the benefits.**
                       * What if some internal state is wanted?
           * function arg is trying to be a class
               * jac, hess, hessp
@@ -46,6 +52,12 @@ Scientific PEP -- Introduction of Optimizer and Function classes
                       implementation if preferred.
                   * would like ability to proceed stepwise through iteration
                       * What if running some web server, and don't have time to wait for minimization to finish?
+                      * There's no easy way of halting minimization and still returning a solution. With the Optimizer
+                        approach one can simply stop on the current iteration, if you're doing the stepping, and you
+                        retain access to the current best solution. You can then restart at a later point. Moreover
+                        if you are using the Optimizer.solve method that runs to convergence you can simply halt at anytime
+                        by raising a StopIteration exception, either in the 'callback', or in your Function evaluation.
+                        This could be done for current Optimizers, but only by amending all minimizers.
                   * would like to access solver state
                       * e.g., current value of f(x)
                       * e.g., for coding gradients
@@ -62,8 +74,39 @@ Scientific PEP -- Introduction of Optimizer and Function classes
               subclasses with inherited methods are by definition covered. This is not the case for a multiplicity of 
               minimizer functions.
               * Unix philisophy, small sharp tools for one job and one job only. Not many dull tools for the same job.
-          * examine scipy issues database to see what issues would be cleaned up.
-              * #5832, grad.T should be returned but not documented
+   * The following open issues/PRs would be significantly easier to be addressed (or tackled by the user themselves) with
+     subclassing of an Optimizer base class. That there are many signifies the level of difficulty implementing a coherent 
+     solution across scipy.optimize.
+      # 5832 grad.T should be returned but not documented
+      # 7819 WIP: Basin hopping improvements. **discusses behaviour of how a minimizer should signify success/failure, e.g.**
+        **if a constraint is violated**
+      # 7425 ENH: optimize: more complete callback signature. **easily achieved, Optimizer base class calls the callback**
+      # 6907 differential_evolution: improve callback **easily achieved, Optimizer base class calls the callback**
+      # 4384 ENH: optimize, returning True from callback function halts minimization **callback could return a StopIteration**
+        **which would simply stop at the current iteration in Optimizer.solve(), the optimization could then be restarted if**
+        **if desired**.
+      # 8375 optimize - check that maxiter is not exceeded **correct implementation is inherited by all Optimizers.**
+        **testing is simple for all Optimizers**
+      # 8419 (comment): "some optimize.minimize methods modify the parameter vector in-place", **is inherited by all** 
+        **Optimizers**
+      # 8031 Scipy optimize.minimize maxfun has confusing behavior **maxfun behaviour is implemented by Optimizer base**
+        **class. Documentation in one place should make things clear**
+      # 8373 "scipy.optimize has broken my trust." mismatch between callback x and displayed output from L-BFGS-B
+      # 6019 "minimize_scalar doesn't honor disp option". **Optimizer base class can standardise iteration by iteration**
+        **displaying, and end of solve displaying. Inheriting Optimizers can override if absolutely necessary**
+      # 7854: "BUG: L-BFGS-B does two more iterations than specified in maxiter" **More easily tested with Optimizer class**
+      # 6673, "return value of scipy.optimize.minimize not consistent for 1D", **This can be standardised more easily**
+      # 7306 "any way of stopping optimization?". **Easily implemented by Optimizer. Either by raising StopIteration,**
+        **or by controlling the iteration yourself on a stepwise basis** One comment in this issue: "Beyond a pre-specified
+        iteration limit, I always wanted some way of gracefully terminating an optimization routine during execution. I was
+        working on problems that took a very long time to solve and sometimes I wanted to see what was going on when the
+        algorithm seemed close to a solution but never seemed to achieve the termination conditions.
+      # 6878 differential_evolution: make callback receive fun(xk) **User has full access to Optimizer, this is available**
+        **during stepwise iteration. Otherwise it should be straightforward to introduce an expanded callback**
+        **in a standardised fashion**
+      
+      
+ 
    * Existing work
        * Class defs: PyTorch, skopt
        * Functional class wrapper around minimize: statsmodels, astropy, scikits.fitting
@@ -99,6 +142,9 @@ Scientific PEP -- Introduction of Optimizer and Function classes
            * What interface are we proposing? See proposed code below
        * Speed
          * will be benchmarked to check that performance is not damaged. Class based system is easy to convert to cython.
+           **Using asv it's about a 25% extra time penalty for bfgs, lbfgsb, fmin (e.g. 252us to 310us). However,**
+           **those benchmarks use really quick functions. If one of the benchmarks was on much slower function**
+           **the overhead will be relatively minor compared to that going to an Optimizer class**
        * Backwards compatibility
          * backwards compatibility is a focus
          * the functionality will remain but rely on the solver objects. Should be able to remove `_minimize_lbfgsb`, etc.
