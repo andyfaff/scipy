@@ -58,6 +58,7 @@ Scientific PEP -- Introduction of Optimizer and Function classes
                         if you are using the Optimizer.solve method that runs to convergence you can simply halt at anytime
                         by raising a StopIteration exception, either in the 'callback', or in your Function evaluation.
                         This could be done for current Optimizers, but only by amending all minimizers.
+                      * user can use their own convergence criteria, don't need to depend on minimizer to halt.
                   * would like to access solver state
                       * e.g., current value of f(x)
                       * e.g., for coding gradients
