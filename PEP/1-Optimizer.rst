@@ -104,7 +104,15 @@ Scientific PEP -- Introduction of Optimizer and Function classes
       # 6878 differential_evolution: make callback receive fun(xk) **User has full access to Optimizer, this is available**
         **during stepwise iteration. Otherwise it should be straightforward to introduce an expanded callback**
         **in a standardised fashion**
-      
+      # 6026 Replace approx_grad with _numdiff.approx_derivative in scipy.optimize **all numerical differentiation done in**
+        **Function class, fix is only needed in one place. Optimizers don't need to know.**.
+      # 6019 minimize_scalar doesn't seem to honor "disp" option
+      # 5481 "1D root-finding interface and documentation could be improved" **Asking for a standardised approach to root**
+        **finding. May be possible to inherit Optimizer class for root finding to standardise behaviour.**
+      # 5161 Optimizers reporting success when the minimum is NaN. **this would be standardised to make success False**
+      # 4921 scipy.optimize maxiter option not working as expected **Optimizer.solve standardises for all subclasses**
+      # 3816 wrap_function seems not to be working when wrapper_args is a one element list **fix in Optimizer, fix in all**
+        *subclasses**
       
  
    * Existing work
