@@ -124,7 +124,7 @@ argument yields the smallest function value, or in pseudo-code,
     def f(x):
         return (x - 1) ** 2
 
-    result = minimize(f)
+    result = minimize(f, x0=np.random.randn())
     assert np.allclose(result.x, 1) and np.allclose(result.fun, 0)
 
 The SciPy ``minimize`` function has been widely used. Over 17,000
