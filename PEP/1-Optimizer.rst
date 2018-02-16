@@ -135,6 +135,13 @@ Scientific PEP -- Introduction of Optimizer and Function classes
              those examples need to iterate, they both finish up with an OptimizeResult, they both have convergence criteria,
              etc.
        * Give an example
+   * Pushback
+       * `minimize` is supposed to implement a unified interface
+          (rewrite from fmin, fmin_bfgs, etc => mininimize)
+       * `minimize` is similar to `solve_ivp`
+         (see https://github.com/scipy/scipy/pull/8414#issuecomment-366372052)
+         I said "minimize has been an issue to me". Can point to other examples.
+         and implementing classes could lower barrier to implementing new minimizers
    * Enhancements
        * Provide standard interface
            * for enhancements to sklearn, dask-ml, etc. Possibly PyTorch. **Would those projects be prepared to state that?**
