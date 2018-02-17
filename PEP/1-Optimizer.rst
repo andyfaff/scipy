@@ -120,6 +120,8 @@ Scientific PEP -- Introduction of Optimizer and Function classes
        * Class defs: PyTorch, skopt
        * Functional class wrapper around minimize: statsmodels, astropy, scikits.fitting
        * Functional defs: sklearn, daskml, skimage
+       * Other:
+         * scikit.optimization (class based, no webpage (download from PyPI)).
    * Proposed solution
        * Classes (idea: `Function` and `Optimizer` class)
            * `Optimizer` - takes care of minimization and stepping
