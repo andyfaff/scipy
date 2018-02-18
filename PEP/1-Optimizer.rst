@@ -26,6 +26,26 @@ Scientific PEP -- Introduction of Optimizer and Function classes
              those examples need to iterate, they both finish up with an OptimizeResult, they both have convergence criteria,
              etc.
        * Give an example
+   * Enhancements
+       * Provide standard interface
+           * for enhancements to sklearn, dask-ml, etc. Possibly PyTorch. **Would those projects be prepared to state that?**
+           * it would provide a standard way to operate the object, but all the classes would still have different names
+           * give example of how sklearn could revamp (ask the developers how they'd use it)
+       * Provide class features
+           * object interaction. Useful for experts, intermediates.
+           * expose alg hyperparameters (grid search, etc)
+           * keyboard interrupts
+           * introduction of context manager enables easy setup of cleanup actions
+              * would make it easier have wholesale introduction of things like multiprocessing.
+              * We should think about multiprocessing or multithreaded algorithms like Hogwild!. How will these be used?
+      * Clean up minimize API (it's complicated right now)
+         * Require fewer arguments to minimize, and separate them
+   * Existing work
+       * Class defs: PyTorch, skopt
+       * Functional class wrapper around minimize: statsmodels, astropy, scikits.fitting
+       * Functional defs: sklearn, daskml, skimage
+       * Other:
+         * scikit.optimization (class based, no webpage (download from PyPI)).
    * Motivation
        * No standard interface for optimizers or functions.
            * Have to explain why minimize isn't a standard interface.
@@ -131,12 +151,6 @@ Scientific PEP -- Introduction of Optimizer and Function classes
         *subclasses**
 
 
-   * Existing work
-       * Class defs: PyTorch, skopt
-       * Functional class wrapper around minimize: statsmodels, astropy, scikits.fitting
-       * Functional defs: sklearn, daskml, skimage
-       * Other:
-         * scikit.optimization (class based, no webpage (download from PyPI)).
    * Pushback
        * `minimize` is supposed to implement a unified interface
           (rewrite from fmin, fmin_bfgs, etc => mininimize)
@@ -149,20 +163,6 @@ Scientific PEP -- Introduction of Optimizer and Function classes
            * We have personal experience that makes minimize a problem. We are
              open to expanding this class interface but currently see no need
              to expand root/minimize_scalar/linprog.
-   * Enhancements
-       * Provide standard interface
-           * for enhancements to sklearn, dask-ml, etc. Possibly PyTorch. **Would those projects be prepared to state that?**
-           * it would provide a standard way to operate the object, but all the classes would still have different names
-           * give example of how sklearn could revamp (ask the developers how they'd use it)
-       * Provide class features
-           * object interaction. Useful for experts, intermediates.
-           * expose alg hyperparameters (grid search, etc)
-           * keyboard interrupts
-           * introduction of context manager enables easy setup of cleanup actions
-              * would make it easier have wholesale introduction of things like multiprocessing.
-              * We should think about multiprocessing or multithreaded algorithms like Hogwild!. How will these be used?
-      * Clean up minimize API (it's complicated right now)
-         * Require fewer arguments to minimize, and separate them
    * Implementation
        * List functions, attributes in more depth
        * Existing code
@@ -218,12 +218,76 @@ widespread use and unify various interfaces.
 
 Proposed solution
 =================
-Goals
------
-Embodiment
-----------
+
+We propose rewriting the ``minimize`` function with ``Optimizer`` and
+``Function`` classes. We propose this in support of
+
+- allowing ease of use for ``minimize``
+- exposing a new API that allows for easier creation of new optimizers
+- cleaning the existing API
+- preserving backwards compatibility
+
+This should be a transparent change to the end-user. However, this change will
+be appreciated by the intermediate or advanced user.
+
+The classes we are proposing are ``Optimizer`` and ``Function``. Briefly,
+``Optimizer`` takes optimization steps and ``Function`` handles then function
+and gradient information. We detail the exact methods and attributes later, but
+present a brief example below.
+
 Example
 -------
+
+This is an example of machine learning. A function (``L2Loss``) is defined and
+needs to be minimized over different training examples.
+
+.. code-block:: python
+
+    from scipy.optimize import Function, Optimizer
+
+    class L2Loss(Function):
+        def __init__(self, A, y, *args, **kwargs):
+            self.A = A
+            self.y = y
+            super().__init__(self, *args, **kwargs)
+
+        def func(x):
+            return LA.norm(self.A@x - self.y)**2
+
+        def grad(x):
+            return 2 * self.A.T @ (self.A@x - self.y)
+
+    class GradientDescent(Optimizer):
+        def __init__(self, *args, step_size=1e-3, **kwargs):
+            self.step_size = step_size
+            super().__init__(*arg, **kwargs)
+
+        def __next__(self):
+            self.x -= self.step_size*self.grad(x)
+
+    if __name__ == "__main__":
+        n, d = 100, 10
+        A = np.random.randn(n, d)
+        x_star = np.random.randn(d)
+        y = np.sign(A @ x_star)
+
+        loss = L2Loss(A, y)
+        opt = GradientDescent(loss)
+
+        for k in range(100):
+            opt.step()  # Optimizer also supports iteration
+            if k % 100 == 0:
+                compute_stats(opt, loss)
+
+Enhancements
+============
+Standard interface
+------------------
+Class features
+--------------
+API cleaning
+------------
+
 
 Motivation
 ==========
@@ -283,17 +347,6 @@ Open bugs
 
 Existing work
 =============
-
-
-Enhancements
-============
-Standard interface
-------------------
-Class features
---------------
-API cleaning
-------------
-
 
 
 Implementation
