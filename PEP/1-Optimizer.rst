@@ -1,3 +1,6 @@
+Notes - look into lowlevelcallables. If we can use those to get a good speedup from a cython based Optimizer, then that will
+provide impetus for support.
+
 Scientific PEP -- Introduction of Optimizer and Function classes
 ================================================================
 
@@ -18,8 +21,11 @@ Scientific PEP -- Introduction of Optimizer and Function classes
              for grad and hess if required. Can be overridden if the user wishes to define their own grad/hess
              implementations. This pattern is intrinsic, and is sort of **already in use** in scipy at
              scipy/benchmarks/benchmarks/test_functions.py.
+           * This is the approach being taken in a constrained trust region minimizer in "ENH: optimize: ``trust-constr``
+             optimization algorithms [GSoC 2017]" under PR #8328, in which scalar functions are being described by a class
+             object. The problem setup is naturally suited to class based organisation.
        * Goal:
-           * provide minimal class interface
+           * provide minimal class interface.
            * preserve backwards compatibility
            * targetted at minimization of scalar functions to start with, although the Optimizer class and its methods should
              be a suitable base class for implementing for class based root and least-squares solvers. For example, both of
@@ -70,8 +76,9 @@ Scientific PEP -- Introduction of Optimizer and Function classes
               * jac, hess, hessp
               * args (kwargs?)
           * there is no separation of concerns between function and minimizer
-              * meaning the minimizer is carrying out numerical gradient calculations.
-              * The correct place for grad computation belongs with the function, not the minimizer.
+              * meaning the minimizer is asking for numerical gradient calculations to be carried out.
+              * The correct place for grad computation belongs with the function, not the minimizer. Why does the minimizer
+                need numerical differentiation step values?
               * Mixing of function arguments with optimization arguments (plus, there are too many arguments)
               * no kwargs for func, only args
           * scipy.optimize.minimize is a black box (have to explain why)
@@ -177,6 +184,9 @@ Scientific PEP -- Introduction of Optimizer and Function classes
          * backwards compatibility is a focus
          * the functionality will remain but rely on the solver objects. Should be able to remove `_minimize_lbfgsb`, etc.
          * new solver objects can be used by themselves.
+	 
+       * We should enumerate all the minimizers that would be targetted in this PR. NelderMead, LBFGSB, BFGS, ...? Perhaps 
+       it's better if the classes aren't visible for a release or two? Roadmap for the rest of the minimizers?
 
 *Abstract*
 
@@ -297,8 +307,9 @@ believe this through bug reports, personal experience and anecdotal evidence.
 
 This section formulates and itemizes why we believe the `minimize` interface
 could use improvement. In summary, this is because `minimize` is a black-box
-that hides many important details and has many class features. We also list
-issues filed that have surfaced because of related issues.
+that hides many important details and has many features that would be better
+represented in class form. We also list issues filed that have surfaced
+because of related issues.
 
 No standard interface
 ---------------------
