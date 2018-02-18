@@ -298,8 +298,30 @@ API cleaning
 
 Implementation
 ==============
+An Optimizer and Function class will be created. Using two classes clearly separates their functionality, for example, it shouldn't be necessary for a minimizer to worry about how gradients are calculated.
+
 Definition
 ----------
+
+Function class
+--------------
+The Function class is responsible for evaluating its function, its gradient, and its Hessian. Minimization of scalar functions and vector functions will require separate implementations, but will have the same methods.
+
+class Function()
+
+	def __init__(self, func=None, grad=None, hess=None, fd_method='3-point', step=None)
+
+	def func
+		# responsible for calculating scalar/vector function
+		
+	def grad
+		# responsible for calculating gradient
+		
+	def hess
+		# responsible for calculating hessian
+		
+There will be different ways of creating a function. Either the Function can be initialised with `func`, `grad`, `hess` callables, or a Function may be subclassed. If the Function is not subclassed then it must be initialised with a `func` callable. If `grad` and `hess` are not provided, or not overridden, then the gradient and hessian will be numerically estimated with finite differences. The finite differences will either be absolute or relative step (approx_fprime or approx_derivative), and controlled by the `fd_method` or `step` keywords.
+
 Existing code
 -------------
 Backward compatibility
