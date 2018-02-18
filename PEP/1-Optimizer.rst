@@ -230,7 +230,15 @@ We propose rewriting the ``minimize`` function with ``Optimizer`` and
 We propose introducing two new classes, ``Optimizer`` and ``Function``.  We
 propose implementing a function ``Optimizer.__next_`` that iterates through the
 optimization results while trying to minimize a ``Function`` (which contains
-all gradient information).
+all gradient information). We plan on implementing these two base classes in
+Cython.
+
+We plan on subclassing ``Optimizer`` to implement different optimization
+methods. All optimizers perform some iterative method, and we propose wrapping
+this iteration in the ``__next__`` function in a class that inherits from
+``Optimizer``. For example, calling ``NelderMead.__next__`` would advance the
+optimization. This design will allow for future work on functions that are
+completely external to Python (e.g., ``leastsq`` which uses ``minpack``)
 
 This should be a transparent change to the end-user of ``minimize``. However,
 the introduction of ``Optimizer`` and ``Function`` will be appreciated by the
@@ -296,7 +304,7 @@ Motivation
 ==========
 
 We believe the `minimize` API and interface need improvement. We have come to
-believe this through bug reports and personal experience and anecdotal evidence.
+believe this through bug reports, personal experience and anecdotal evidence.
 
 This section formulates and itemizes why we believe the `minimize` interface
 could use improvement. In summary, this is because `minimize` is a black-box
@@ -336,8 +344,14 @@ rest could inherit.
 ``minimize``'s ``func`` argument has many class features
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-``minimize`` is a black box
-^^^^^^^^^^^^^^^^^^^^^^^^^^^
+``minimize`` doesn't expose all parameters
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.. comment::
+
+    for example, minimize(method='cg') doesn't expose all line search params.
+    Why is c2=0.4 optimal? Or why should a line search even be performed? Why
+    not have an ``Optimizer.update`` that returns the updates the model params?
 
 Separation of function and minimizer
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -390,9 +404,9 @@ Existing code
 Backward compatibility
 ----------------------
 
+
 Example usage
 -------------
-
 
 .. code-block:: python
 
