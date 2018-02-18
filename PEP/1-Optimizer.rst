@@ -1,5 +1,11 @@
-Notes - look into lowlevelcallables. If we can use those to get a good speedup from a cython based Optimizer, then that will
-provide impetus for support.
+
+.. notes::
+
+    * look into lowlevelcallables. If we can use those to get a good speedup from a cython based Optimizer, then that will
+    provide impetus for support.
+    * ask library maintainers (sklearn, skimage, daskml) about
+        * anecdotal evidence of experience with minimize
+        * How would this SciPy enhancement proposal help or hurt your library?
 
 Scientific PEP -- Introduction of Optimizer and Function classes
 ================================================================
