@@ -305,7 +305,7 @@ Existing code
 Backward compatibility
 ----------------------
 
-Proposed code
+Example usage
 -------------
 
 
@@ -318,6 +318,8 @@ Proposed code
 
     def callback(x): print(x)
 
+    x0 = [2.0]
+  
     # existing call has lots of parameters, mixing optimizer args with func args
     # it might be nice to have **kwds as well, but not possible with current approach
     result = minimize(func, x0, args=(2,), jac=grad, method='BFGS', maxiter=10, callback=callback)
@@ -334,7 +336,8 @@ Proposed code
     # alternatively control how iteration occurs
     d = opt.hyper_parameters
     for i, v in enumerate(opt):
-      x, f = v print(i, f, x)
+      x, f = v
+      print(i, f, x)
       d['my_hyper_parameter'] = np.inf
 
     # use function classes encapsulates the whole function and offers the potential for more sophisticated calculation.
@@ -353,7 +356,7 @@ Proposed code
         def hess(self, x):
             return 2
 
-    opt = BFGS(function, x0).solve(maxiter=10)
+    opt = BFGS(Quad, x0).solve(maxiter=10)
 
     # context managers offer the chance for cleanup actions, for example multiprocessing.
 
