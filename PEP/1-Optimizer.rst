@@ -227,13 +227,17 @@ We propose rewriting the ``minimize`` function with ``Optimizer`` and
 - cleaning the existing API
 - preserving backwards compatibility
 
-This should be a transparent change to the end-user. However, this change will
-be appreciated by the intermediate or advanced user.
+We propose introducing two new classes, ``Optimizer`` and ``Function``.  We
+propose implementing a function ``Optimizer.__next_`` that iterates through the
+optimization results while trying to minimize a ``Function`` (which contains
+all gradient information).
 
-The classes we are proposing are ``Optimizer`` and ``Function``. Briefly,
-``Optimizer`` takes optimization steps and ``Function`` handles then function
-and gradient information. We detail the exact methods and attributes later, but
-present a brief example below.
+This should be a transparent change to the end-user of ``minimize``. However,
+the introduction of ``Optimizer`` and ``Function`` will be appreciated by the
+intermediate or advanced user. Either way, the implementation of these classes
+will clean the ``minimize`` implementation, provide a tighter standard
+interface and provide other class features. We expand upon each of these points
+after presenting a brief example.
 
 Example
 -------
@@ -274,8 +278,7 @@ needs to be minimized over different training examples.
         loss = L2Loss(A, y)
         opt = GradientDescent(loss)
 
-        for k in range(100):
-            opt.step()  # Optimizer also supports iteration
+        for k, _ in enumerate(opt):  # Optimizer.__next__ implement minimization
             if k % 100 == 0:
                 compute_stats(opt, loss)
 
@@ -293,7 +296,7 @@ Motivation
 ==========
 
 We believe the `minimize` API and interface need improvement. We have come to
-believe this through bug reports, personal experience and anecdotal evidence.
+believe this through bug reports and personal experience and anecdotal evidence.
 
 This section formulates and itemizes why we believe the `minimize` interface
 could use improvement. In summary, this is because `minimize` is a black-box
@@ -360,18 +363,25 @@ Function class
 --------------
 The Function class is responsible for evaluating its function, its gradient, and its Hessian. Minimization of scalar functions and vector functions will require separate implementations, but will have the same methods.
 
-class Function()
+.. code-block:: python
 
-	def __init__(self, func=None, grad=None, hess=None, fd_method='3-point', step=None)
+    class Function():
 
-	def func
-		# responsible for calculating scalar/vector function
-		
-	def grad
-		# responsible for calculating gradient
-		
-	def hess
-		# responsible for calculating hessian
+        def __init__(self, func=None, grad=None, hess=None, fd_method='3-point', step=None):
+            # responsible for initialization
+            ...
+
+        def func(self, *args, **kwargs):
+            # responsible for calculating scalar/vector function
+            ...
+
+        def grad(self, *args, **kwargs):
+            # responsible for calculating gradient
+            ...
+
+        def hess(self, *args, **kwargs):
+            # responsible for calculating hessian
+            ...
 		
 There will be different ways of creating a function. Either the Function can be initialised with `func`, `grad`, `hess` callables, or a Function may be subclassed. If the Function is not subclassed then it must be initialised with a `func` callable. If `grad` and `hess` are not provided, or not overridden, then the gradient and hessian will be numerically estimated with finite differences. The finite differences will either be absolute or relative step (approx_fprime or approx_derivative), and controlled by the `fd_method` or `step` keywords.
 
