@@ -4,6 +4,7 @@
     * look into lowlevelcallables. If we can use those to get a good speedup from a cython based Optimizer, then that will
     provide impetus for support.
     * ask library maintainers about
+        * Can you look our proposal over?
         * anecdotal evidence of experience with minimize
         * How would this SciPy enhancement proposal currently help your library?
 	* If this had been present when development of your library began, how would have it influenced your library?
