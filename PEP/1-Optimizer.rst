@@ -3,9 +3,11 @@
 
     * look into lowlevelcallables. If we can use those to get a good speedup from a cython based Optimizer, then that will
     provide impetus for support.
-    * ask library maintainers (sklearn, skimage, daskml) about
+    * ask library maintainers about
         * anecdotal evidence of experience with minimize
-        * How would this SciPy enhancement proposal help or hurt your library?
+        * How would this SciPy enhancement proposal currently help your library?
+	* If this had been present when development of your library began, how would have it influenced your library?
+	* Libraries: sklearn, skimage, cvxpy, daskml, PyTorch, theano, Chainer, neon, Thinc
 
 Scientific PEP -- Introduction of Optimizer and Function classes
 ================================================================
