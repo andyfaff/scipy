@@ -364,14 +364,31 @@ rest could inherit.
 ``minimize``'s ``func`` argument has many class features
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-``minimize`` doesn't expose all parameters
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+``minimize`` doesn't expose other functions
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-.. comment::
+``minimize`` hides a lot of detail, and there are many functions called during
+minimization. There is no interface to change any of the arguments to these
+functions or how they operate. For example, gradients can be approximated and
+line searches need to be performed. Below, we detail these two examples and
+point to specific spots where values could be changed.
 
-    for example, minimize(method='cg') doesn't expose all line search params.
-    Why is c2=0.4 optimal? Or why should a line search even be performed? Why
-    not have an ``Optimizer.update`` that returns the updates the model params?
+The `Wolfe conditions`_ are met during minimization for the CG, BFGS and
+Newton-CG methods with the function ``_line_search_wolfe12``. These line
+searchs depend on two parameters, :math:`0 < c_1 < c_2 < 1` and may
+fundamentally depend on the function being minimized and the dependence on any
+data. No interface to presented to change these values, and values presented in
+optimization papers are provided. Additionally, it may not even be required to
+perform a line search with these methods if theoritical bounds are known. This
+likely won't be an issue in practice as long as in intial step size can be set.
+It appears the initial step is set to 1 and the function is assumed to be
+quadratic (`linesearch.py#L154-159`_).  This may not be a good set of
+assumptions and may require modification.
+
+.. linesearch.py#L154-159: https://github.com/scipy/scipy/blob/1fc6f171c1f5fec9eef6a74127b3cf4858cb632a/scipy/optimize/linesearch.py#L154-L159
+
+.. Wolfe conditions: https://en.wikipedia.org/wiki/Wolfe_conditions
+
 
 Separation of function and minimizer
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
