@@ -378,12 +378,18 @@ Newton-CG methods with the function ``_line_search_wolfe12``. These line
 searchs depend on two parameters, :math:`0 < c_1 < c_2 < 1` and may
 fundamentally depend on the function being minimized and the dependence on any
 data. No interface to presented to change these values, and values presented in
-optimization papers are provided. Additionally, it may not even be required to
-perform a line search with these methods if theoritical bounds are known. This
-likely won't be an issue in practice as long as in intial step size can be set.
-It appears the initial step is set to 1 and the function is assumed to be
-quadratic (`linesearch.py#L154-159`_).  This may not be a good set of
-assumptions and may require modification.
+optimization papers are provided. Even choosing the initial step length is
+difficult, and it appears to be set to 1 and the function is assumed to be
+quadratic (`linesearch.py#L154-159`_).
+
+Additionally, it may not even be required to perform a line search with these
+methods if theoritical bounds are known, or if another minimize method is
+desired. This is especially true if the function or gradients are very
+expensive time-wise to evaluate. This is especially true if the function
+depends on many data, which is common. In these cases, different methods are
+used to choose step size. This would be easiest to change if the optimization
+classes had some property to choose a step size, maybe ``Optimizer.step_size``
+which could call the line search method by default.
 
 .. linesearch.py#L154-159: https://github.com/scipy/scipy/blob/1fc6f171c1f5fec9eef6a74127b3cf4858cb632a/scipy/optimize/linesearch.py#L154-L159
 
