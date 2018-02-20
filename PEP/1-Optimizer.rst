@@ -11,7 +11,7 @@
 	* Libraries: sklearn, skimage, cvxpy, daskml, PyTorch, theano, Chainer, neon, Thinc
     * **BasinHoppingRunner and DifferentialEvolutionSolver are already almost in Optimizer form. THey both have __next__/one_cycle**
       **functionality**.
-    
+
 
 Scientific PEP -- Introduction of Optimizer and Function classes
 ================================================================
@@ -196,8 +196,8 @@ Scientific PEP -- Introduction of Optimizer and Function classes
          * backwards compatibility is a focus
          * the functionality will remain but rely on the solver objects. Should be able to remove `_minimize_lbfgsb`, etc.
          * new solver objects can be used by themselves.
-	 
-       * We should enumerate all the minimizers that would be targetted in this PR. NelderMead, LBFGSB, BFGS, ...? Perhaps 
+
+       * We should enumerate all the minimizers that would be targetted in this PR. NelderMead, LBFGSB, BFGS, ...? Perhaps
        it's better if the classes aren't visible for a release or two? Roadmap for the rest of the minimizers?
 
 *Abstract*
@@ -249,39 +249,35 @@ We propose rewriting the ``minimize`` function with ``Optimizer`` and
 - cleaning the existing API
 - preserving backwards compatibility
 
-The ``Function`` class is responsible for calculating func/gradient/hessians for
-the problem, and will also take care of implementing numerical differentiation
-if the user does not provide gradient/hessian implementations. The current
-design was targetted at scalar functions (R^m --> R), but there is no
-reason why the same design could not be used for minimising scalars (R-->R),
-root finding, and vector functions (R^m --> R^n). For example, these would
-simply require a `VectorFunction` class to implement the `func`, `grad` and
-`hess` methods.
-The ``Optimizer`` class is used to optimize a ``Function``. Nearly all optimizers
-(with the exception of brute) have some fundamental iterative behaviour,
-and so ``Optimizer`` is an iterable which allows stepwise progression
-through the problem, via ``Optimizer.__next_``.
-``Optimizer`` will be subclassed to implement different optimization
-techniques, with each of the subclasses overriding the ``__next__`` method
-to represent the core of their iterative technique. ``Optimizer`` will also
-possess a `solve` method to run the Optimizer to completion.
-Some of the scalar minimizers (LBFGSB) perform iteration in a Python loop, with
-calls to external Fortran/C functions during each iteration, we do not propose
-to replace those external calls at this time.
+The ``Function`` class is responsible for calculating the function, gradient
+and Hessian (and will implement numerical differentiation gradient/Hessian
+implementation not provided). The ``Function`` class is general and can be used
+to map between arbitrary dimensions, including scalar and vector functions.
+
+The ``Optimizer`` class is used to optimize a ``Function``. Nearly all
+optimizers (with the exception of an exhaustive search) have some fundamental
+iterative behavior. As such, the ``Optimizer`` will be iterable, which allows
+stepwise progression through the problem (via ``Optimizer.__next_``).
+
+Different optimization algorithms can inherit from ``Optimizer``, with each of
+the subclass overriding the ``__next__`` method to represent the core of their
+iterative technique. For some solvers, each iteration is implemented in
+C/Fortran with the main optimization loop in Python (e.g., LBFGSB). We are not
+proposing to replace those external calls.
+
 Other optimizers run the complete optimization in external C/Fortran code
-(such as ``leastsq`` <-> ``minpack``). For those situations the
-``solve``/``__next__`` methods can simply ask the external code to run their
-entire optimization, with a single step not being possible. In the future
-single stepping may be possible via extraction of iteration logic into cython
-based code. However, doing so would obviously have to be rigourously tested
-and benchmarked.
+(e.g., ``leastsq`` which calls ``minpack``). These methods can run the entire
+optimization in external code. Future work may involve performing a single
+optimization step in C/Fortran by extraction of iteration logic into Python or
+Cython, but is beyond the scope of this proposal (and would also require
+rigorous benchmarking and testing).
 
 The proposed changes will be transparent to an end-user of ``minimize``, or
-``fmin``. However, as described below, the introduction of ``Optimizer`` and
-``Function`` classes will be appreciated by the intermediate or advanced user.
-We propose the implementation of these classes will clean the ``minimize``
-implementation, provide a tighter standard interface and provide other class
-features. We expand upon each of these points after presenting a brief example.
+``fmin``, and intermediate or advanced users will appreciate the ``Optimizer``
+and ``Function`` classes.  We claim the implementation of these classes will
+clean the ``minimize`` implementation, provide a tighter standard interface,
+allow easy extensibility and provide other class features. We expand upon each
+of these points after presenting a brief example.
 
 Example
 -------
@@ -456,7 +452,7 @@ The Function class is responsible for evaluating its function, its gradient, and
         def hess(self, *args, **kwargs):
             # responsible for calculating hessian
             ...
-		
+
 There will be different ways of creating a function. Either the Function can be initialised with `func`, `grad`, `hess` callables, or a Function may be subclassed. If the Function is not subclassed then it must be initialised with a `func` callable. If `grad` and `hess` are not provided, or not overridden, then the gradient and hessian will be numerically estimated with finite differences. The finite differences will either be absolute or relative step (approx_fprime or approx_derivative), and controlled by the `fd_method` or `step` keywords.
 
 Existing code
@@ -510,7 +506,7 @@ Example usage
     def callback(x): print(x)
 
     x0 = [2.0]
-  
+
     # existing call has lots of parameters, mixing optimizer args with func args
     # it might be nice to have **kwds as well, but not possible with current approach
     result = minimize(func, x0, args=(2,), jac=grad, method='BFGS', maxiter=10, callback=callback)
