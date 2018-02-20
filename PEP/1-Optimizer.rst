@@ -229,11 +229,11 @@ The SciPy ``minimize`` function has been widely used. Over 17,000
 results for "``from scipy.optimize import minimize``" appear from a
 GitHub search, and ``minimize`` is included in many libraries including
 scikit-learn, scikit-image, statsmodels and astropy. Preserving
-backwards compatibility to keep this code functional is a priority.
-However, we believe that we can improve upon SciPy's minimization API.
-We believe implementation of this will allow easier use, enable more
-widespread use and unify various interfaces.
-
+backwards compatibility to keep this code functional is a priority, as
+is library performance. However, we believe that we can enhance SciPy's
+minimization API by introducing a lower level class based system for
+various minimizers. This class based system will allow more sophisticated
+functionality, but will also be easier to maintain, test, and develop.
 
 Proposed solution
 =================
@@ -246,25 +246,40 @@ We propose rewriting the ``minimize`` function with ``Optimizer`` and
 - cleaning the existing API
 - preserving backwards compatibility
 
-We propose introducing two new classes, ``Optimizer`` and ``Function``.  We
-propose implementing a function ``Optimizer.__next_`` that iterates through the
-optimization results while trying to minimize a ``Function`` (which contains
-all gradient information). We plan on implementing these two base classes in
-Cython.
+We propose introducing two new classes, ``Optimizer`` and ``Function``.
 
-We plan on subclassing ``Optimizer`` to implement different optimization
-methods. All optimizers perform some iterative method, and we propose wrapping
-this iteration in the ``__next__`` function in a class that inherits from
-``Optimizer``. For example, calling ``NelderMead.__next__`` would advance the
-optimization. This design will allow for future work on functions that are
-completely external to Python (e.g., ``leastsq`` which uses ``minpack``)
+``Function`` is responsible for calculating func/gradient/hessians for the
+problem, and will also take care of implementing numerical differentiation
+if the user does not provide gradient/hessian implementations. The current
+design was targetted at scalar functions (R^m --> R), but it there is no
+reason why the same design could not be used for minimising scalars (R-->R),
+root finding and vector functions (R^m --> R^n). Implementation of those would
+simply require a `VectorFunction` class to implement `func`, `grad` and `hess`
+methods.
+The ``Optimizer`` class is used to optimize a ``Function``. All optimizers
+perform some iterative method, and so ``Optimizer`` is an iterable which
+allows stepwise progression through the problem, via ``Optimizer.__next_``.
+``Optimizer`` will be subclassed to implement different optimization
+techniques, with each of the subclasses overriding the ``__next__`` method
+to represent the core of their iterative technique. ``Optimizer`` will also
+possess a `solve` method to run the Optimizer to completion.
+Some of the scalar minimizers (LBFGSB) perform iteration in a Python loop, with
+calls to external Fortran/C functions during each iteration, we do not propose
+to replace those external calls at this time.
+Other optimizers run the complete optimization in external C/Fortran code
+(such as ``leastsq`` <-> ``minpack``). For those situations the
+``solve``/``__next__`` methods can simply ask the external code to run their
+entire optimization, with a single step not being possible. In the future
+single stepping may be possible via extraction of iteration logic into cython
+based code. However, doing so would obviously have to be rigourously tested
+and benchmarked.
 
-This should be a transparent change to the end-user of ``minimize``. However,
-the introduction of ``Optimizer`` and ``Function`` will be appreciated by the
-intermediate or advanced user. Either way, the implementation of these classes
-will clean the ``minimize`` implementation, provide a tighter standard
-interface and provide other class features. We expand upon each of these points
-after presenting a brief example.
+The proposed changes will be transparent to an end-user of ``minimize``, or
+``fmin``. However, as described below, the introduction of ``Optimizer`` and
+``Function`` classes will be appreciated by the intermediate or advanced user.
+We propose the implementation of these classes will clean the ``minimize``
+implementation, provide a tighter standard interface and provide other class
+features. We expand upon each of these points after presenting a brief example.
 
 Example
 -------
