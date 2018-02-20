@@ -9,6 +9,9 @@
         * How would this SciPy enhancement proposal currently help your library?
 	* If this had been present when development of your library began, how would have it influenced your library?
 	* Libraries: sklearn, skimage, cvxpy, daskml, PyTorch, theano, Chainer, neon, Thinc
+    * **BasinHoppingRunner and DifferentialEvolutionSolver are already almost in Optimizer form. THey both have __next__/one_cycle**
+      **functionality**.
+    
 
 Scientific PEP -- Introduction of Optimizer and Function classes
 ================================================================
@@ -246,19 +249,18 @@ We propose rewriting the ``minimize`` function with ``Optimizer`` and
 - cleaning the existing API
 - preserving backwards compatibility
 
-We propose introducing two new classes, ``Optimizer`` and ``Function``.
-
-``Function`` is responsible for calculating func/gradient/hessians for the
-problem, and will also take care of implementing numerical differentiation
+The ``Function`` class is responsible for calculating func/gradient/hessians for
+the problem, and will also take care of implementing numerical differentiation
 if the user does not provide gradient/hessian implementations. The current
-design was targetted at scalar functions (R^m --> R), but it there is no
+design was targetted at scalar functions (R^m --> R), but there is no
 reason why the same design could not be used for minimising scalars (R-->R),
-root finding and vector functions (R^m --> R^n). Implementation of those would
-simply require a `VectorFunction` class to implement `func`, `grad` and `hess`
-methods.
-The ``Optimizer`` class is used to optimize a ``Function``. All optimizers
-perform some iterative method, and so ``Optimizer`` is an iterable which
-allows stepwise progression through the problem, via ``Optimizer.__next_``.
+root finding, and vector functions (R^m --> R^n). For example, these would
+simply require a `VectorFunction` class to implement the `func`, `grad` and
+`hess` methods.
+The ``Optimizer`` class is used to optimize a ``Function``. Nearly all optimizers
+(with the exception of brute) have some fundamental iterative behaviour,
+and so ``Optimizer`` is an iterable which allows stepwise progression
+through the problem, via ``Optimizer.__next_``.
 ``Optimizer`` will be subclassed to implement different optimization
 techniques, with each of the subclasses overriding the ``__next__`` method
 to represent the core of their iterative technique. ``Optimizer`` will also
