@@ -36,43 +36,46 @@ Scientific PEP -- Introduction of Optimizer and Function classes
            * This is the approach being taken in a constrained trust region minimizer in "ENH: optimize: ``trust-constr``
              optimization algorithms [GSoC 2017]" under PR #8328, in which scalar functions are being described by a class
              object. The problem setup is naturally suited to class based organisation.
-       * Goal:
-           * provide minimal class interface.
-           * preserve backwards compatibility
-           * targetted at minimization of scalar functions to start with, although the Optimizer class and its methods should
-             be a suitable base class for implementing for class based root and least-squares solvers. For example, both of
-             those examples need to iterate, they both finish up with an OptimizeResult, they both have convergence criteria,
-             etc.
+       * Goals:
+            * enhancing ease of use for ``minimize``
+            * preserving backwards compatibility
+            * exposing a new API to easily create optimizers
+            * cleaning the existing API
        * Give an example
-   * Enhancements
-       * Provide standard interface
-           * for enhancements to sklearn, dask-ml, etc. Possibly PyTorch. **Would those projects be prepared to state that?**
-           * it would provide a standard way to operate the object, but all the classes would still have different names
-           * give example of how sklearn could revamp (ask the developers how they'd use it)
-       * Provide class features
-           * object interaction. Useful for experts, intermediates.
-           * expose alg hyperparameters (grid search, etc)
-           * keyboard interrupts
-           * introduction of context manager enables easy setup of cleanup actions
-              * would make it easier have wholesale introduction of things like multiprocessing.
-              * We should think about multiprocessing or multithreaded algorithms like Hogwild!. How will these be used?
-      * Clean up minimize API (it's complicated right now)
-         * Require fewer arguments to minimize, and separate them
-   * Existing work
-       * Class defs: PyTorch, skopt
-       * Functional class wrapper around minimize: statsmodels, astropy, scikits.fitting
-       * Functional defs: sklearn, daskml, skimage
-       * Other:
-         * scikit.optimization (class based, no webpage (download from PyPI)).
-   * Motivation
-       * No standard interface for optimizers or functions.
+   * Goals
+       * enhancing ease of use for ``minimize``
            * Have to explain why minimize isn't a standard interface.
                * Currently there is a hotch potch of warn_flag numbers that indicate problems when a minimizer stops. Using
                  an Optimizer class could standardise these. See #7819 for discussion on this. The Optimizer class could
                  return an
-           * Minimization is a common problem and implemented in many places
-           * Providing a standard interface for this could help unify users and libraries
-       * Current API needs improvement
+       * preserving backwards compatibility
+       * exposing a new API to easily create optimizers
+           * Provide standard interface
+               * for enhancements to sklearn, dask-ml, etc. Possibly PyTorch. **Would those projects be prepared to state that?**
+               * it would provide a standard way to operate the object, but all the classes would still have different names
+               * give example of how sklearn could revamp (ask the developers how they'd use it)
+           * Provide class features
+               * object interaction. Useful for experts, intermediates.
+               * expose alg hyperparameters (grid search, etc)
+               * keyboard interrupts
+               * introduction of context manager enables easy setup of cleanup actions
+                  * would make it easier have wholesale introduction of things like multiprocessing.
+                  * We should think about multiprocessing or multithreaded algorithms like Hogwild!. How will these be used?
+               * sklearn rewrite of optimize.py on Newton-CG. Only difference is one
+                 function call to get func/grad value and callable to Hessian:
+                 https://github.com/scikit-learn/scikit-learn/blob/931fae8753ad0d9cef1c923ba38932074a8d8027/sklearn/utils/optimize.py#L1-L10
+       * cleaning the existing API
+          * addition of new features to minimizers leads to lengthy functions and lots of duplicate code.
+              * Classes => inheritance. Base class improves => all improve. For example, placing numerical differentiation in
+              the Function class allows either absolute or relative delta change to be made easily, and in one place. To do
+              that for all minimizers would require modifications and extra keywords to all minimizer functions with the
+              attendant risk of introducing bugs in lots of places. Testing those changes is a lot harder.
+              * With Optimizer objects testing can be made a lot easier. If the base class is tested thoroughly then
+              subclasses with inherited methods are by definition covered. This is not the case for a multiplicity of
+              minimizer functions.
+              * Unix philisophy, small sharp tools for one job and one job only. Not many dull tools for the same job.
+          * Clean up minimize API (it's complicated right now)
+             * Require fewer arguments to minimize, and separate them
           * minimize is trying to be a class
                  * method: should be subclasses
                  * show_options: show method-specific args
@@ -120,56 +123,12 @@ Scientific PEP -- Introduction of Optimizer and Function classes
                      * e.g. gradient coding as example
                      * e.g. change convergence tolerances as we're going
                      * e.g. change mutation constant during differential evolution.
-          * addition of new features to minimizers leads to lengthy functions and lots of duplicate code.
-              * Classes => inheritance. Base class improves => all improve. For example, placing numerical differentiation in
-              the Function class allows either absolute or relative delta change to be made easily, and in one place. To do
-              that for all minimizers would require modifications and extra keywords to all minimizer functions with the
-              attendant risk of introducing bugs in lots of places. Testing those changes is a lot harder.
-              * With Optimizer objects testing can be made a lot easier. If the base class is tested thoroughly then
-              subclasses with inherited methods are by definition covered. This is not the case for a multiplicity of
-              minimizer functions.
-              * Unix philisophy, small sharp tools for one job and one job only. Not many dull tools for the same job.
-   * The following open issues/PRs would be significantly easier to be addressed (or tackled by the user themselves) with
-     subclassing of an Optimizer base class. That there are many signifies the level of difficulty implementing a coherent
-     solution across scipy.optimize.
-      # 5832 grad.T should be returned but not documented
-      # 7819 WIP: Basin hopping improvements. **discusses behaviour of how a minimizer should signify success/failure, e.g.**
-        **if a constraint is violated**
-      # 7425 ENH: optimize: more complete callback signature. **easily achieved, Optimizer base class calls the callback**
-      # 6907 differential_evolution: improve callback **easily achieved, Optimizer base class calls the callback**
-      # 4384 ENH: optimize, returning True from callback function halts minimization **callback could return a StopIteration**
-        **which would simply stop at the current iteration in Optimizer.solve(), the optimization could then be restarted if**
-        **if desired**.
-      # 8375 optimize - check that maxiter is not exceeded **correct implementation is inherited by all Optimizers.**
-        **testing is simple for all Optimizers**
-      # 8419 (comment): "some optimize.minimize methods modify the parameter vector in-place", **is inherited by all**
-        **Optimizers**
-      # 8031 Scipy optimize.minimize maxfun has confusing behavior **maxfun behaviour is implemented by Optimizer base**
-        **class. Documentation in one place should make things clear**
-      # 8373 "scipy.optimize has broken my trust." mismatch between callback x and displayed output from L-BFGS-B
-      # 6019 "minimize_scalar doesn't honor disp option". **Optimizer base class can standardise iteration by iteration**
-        **displaying, and end of solve displaying. Inheriting Optimizers can override if absolutely necessary**
-      # 7854: "BUG: L-BFGS-B does two more iterations than specified in maxiter" **More easily tested with Optimizer class**
-      # 6673, "return value of scipy.optimize.minimize not consistent for 1D", **This can be standardised more easily**
-      # 7306 "any way of stopping optimization?". **Easily implemented by Optimizer. Either by raising StopIteration,**
-        **or by controlling the iteration yourself on a stepwise basis** One comment in this issue: "Beyond a pre-specified
-        iteration limit, I always wanted some way of gracefully terminating an optimization routine during execution. I was
-        working on problems that took a very long time to solve and sometimes I wanted to see what was going on when the
-        algorithm seemed close to a solution but never seemed to achieve the termination conditions.
-      # 6878 differential_evolution: make callback receive fun(xk) **User has full access to Optimizer, this is available**
-        **during stepwise iteration. Otherwise it should be straightforward to introduce an expanded callback**
-        **in a standardised fashion**
-      # 6026 Replace approx_grad with _numdiff.approx_derivative in scipy.optimize **all numerical differentiation done in**
-        **Function class, fix is only needed in one place. Optimizers don't need to know.**.
-      # 6019 minimize_scalar doesn't seem to honor "disp" option
-      # 5481 "1D root-finding interface and documentation could be improved" **Asking for a standardised approach to root**
-        **finding. May be possible to inherit Optimizer class for root finding to standardise behaviour.**
-      # 5161 Optimizers reporting success when the minimum is NaN. **this would be standardised to make success False**
-      # 4921 scipy.optimize maxiter option not working as expected **Optimizer.solve standardises for all subclasses**
-      # 3816 wrap_function seems not to be working when wrapper_args is a one element list **fix in Optimizer, fix in all**
-        *subclasses**
-
-
+   * Existing work
+       * Class defs: PyTorch, skopt
+       * Functional class wrapper around minimize: statsmodels, astropy, scikits.fitting
+       * Functional defs: sklearn, daskml, skimage
+       * Other:
+         * scikit.optimization (class based, no webpage (download from PyPI)).
    * Pushback
        * `minimize` is supposed to implement a unified interface
           (rewrite from fmin, fmin_bfgs, etc => mininimize)
@@ -182,6 +141,45 @@ Scientific PEP -- Introduction of Optimizer and Function classes
            * We have personal experience that makes minimize a problem. We are
              open to expanding this class interface but currently see no need
              to expand root/minimize_scalar/linprog.
+   * The following open issues/PRs would be significantly easier to be addressed (or tackled by the user themselves) with
+     subclassing of an Optimizer base class. That there are many signifies the level of difficulty implementing a coherent
+     solution across scipy.optimize.
+      * 5832 grad.T should be returned but not documented
+      * 7819 WIP: Basin hopping improvements. **discusses behaviour of how a minimizer should signify success/failure, e.g.**
+        **if a constraint is violated**
+      * 7425 ENH: optimize: more complete callback signature. **easily achieved, Optimizer base class calls the callback**
+      * 6907 differential_evolution: improve callback **easily achieved, Optimizer base class calls the callback**
+      * 4384 ENH: optimize, returning True from callback function halts minimization **callback could return a StopIteration**
+        **which would simply stop at the current iteration in Optimizer.solve(), the optimization could then be restarted if**
+        **if desired**.
+      * 8375 optimize - check that maxiter is not exceeded **correct implementation is inherited by all Optimizers.**
+        **testing is simple for all Optimizers**
+      * 8419 (comment): "some optimize.minimize methods modify the parameter vector in-place", **is inherited by all**
+        **Optimizers**
+      * 8031 Scipy optimize.minimize maxfun has confusing behavior **maxfun behaviour is implemented by Optimizer base**
+        **class. Documentation in one place should make things clear**
+      * 8373 "scipy.optimize has broken my trust." mismatch between callback x and displayed output from L-BFGS-B
+      * 6019 "minimize_scalar doesn't honor disp option". **Optimizer base class can standardise iteration by iteration**
+        **displaying, and end of solve displaying. Inheriting Optimizers can override if absolutely necessary**
+      * 7854: "BUG: L-BFGS-B does two more iterations than specified in maxiter" **More easily tested with Optimizer class**
+      * 6673, "return value of scipy.optimize.minimize not consistent for 1D", **This can be standardised more easily**
+      * 7306 "any way of stopping optimization?". **Easily implemented by Optimizer. Either by raising StopIteration,**
+        **or by controlling the iteration yourself on a stepwise basis** One comment in this issue: "Beyond a pre-specified
+        iteration limit, I always wanted some way of gracefully terminating an optimization routine during execution. I was
+        working on problems that took a very long time to solve and sometimes I wanted to see what was going on when the
+        algorithm seemed close to a solution but never seemed to achieve the termination conditions.
+      * 6878 differential_evolution: make callback receive fun(xk) **User has full access to Optimizer, this is available**
+        **during stepwise iteration. Otherwise it should be straightforward to introduce an expanded callback**
+        **in a standardised fashion**
+      * 6026 Replace approx_grad with _numdiff.approx_derivative in scipy.optimize **all numerical differentiation done in**
+        **Function class, fix is only needed in one place. Optimizers don't need to know.**.
+      * 6019 minimize_scalar doesn't seem to honor "disp" option
+      * 5481 "1D root-finding interface and documentation could be improved" **Asking for a standardised approach to root**
+        **finding. May be possible to inherit Optimizer class for root finding to standardise behaviour.**
+      * 5161 Optimizers reporting success when the minimum is NaN. **this would be standardised to make success False**
+      * 4921 scipy.optimize maxiter option not working as expected **Optimizer.solve standardises for all subclasses**
+      * 3816 wrap_function seems not to be working when wrapper_args is a one element list **fix in Optimizer, fix in all**
+        *subclasses**
    * Implementation
        * List functions, attributes in more depth
        * Existing code
@@ -228,15 +226,17 @@ from industry as well -- Google, Facebook, Amazon and Microsoft have developed
 Tensorflow, PyTorch, MXNet and CNTK respectively, all of which use
 optimization, have Python bindings and are open source.
 
-The SciPy ``minimize`` function has been widely used. Over 17,000
-results for "``from scipy.optimize import minimize``" appear from a
-GitHub search, and ``minimize`` is included in many libraries including
-scikit-learn, scikit-image, statsmodels and astropy. Preserving
-backwards compatibility to keep this code functional is a priority, as
-is library performance. However, we believe that we can enhance SciPy's
-minimization API by introducing a lower level class based system for
-various minimizers. This class based system will allow more sophisticated
-functionality, but will also be easier to maintain, test, and develop.
+The SciPy ``minimize`` function has been widely used. Over 17,000 results for
+"``from scipy.optimize import minimize``" appear from a GitHub search, and
+``minimize`` is included in many popular libraries including scikit-learn,
+scikit-image, statsmodels and astropy. These libraries are popular -- over
+17,100 results appear for a Google Scholar search for "scikit-learn".
+
+We believe that we can enhance SciPy's minimization API by introducing a class
+based system for various minimizers. Preserving backwards compatibility and
+library performance are both priorities in this rewrite. Intermediate and
+advanced users will appreciate this rewrite. This class based system will allow
+more sophisticated functionality and be easier to maintain, test, and develop.
 
 Proposed solution
 =================
@@ -246,7 +246,8 @@ We propose rewriting the ``minimize`` function with ``Optimizer`` and
 
 - enhancing ease of use for ``minimize``
 - preserving backwards compatibility
-- exposing a new API that allows for easier use and creation of new optimizers
+- exposing a new API to interact with an optimization, and easily create new
+  optimizers
 - cleaning the existing API
 
 The ``Function`` class is responsible for calculating the function, gradient
@@ -257,7 +258,7 @@ to map between arbitrary dimensions, including scalar and vector functions.
 The ``Optimizer`` class is used to optimize a ``Function``. Nearly all
 optimizers (with the exception of an exhaustive search) have some fundamental
 iterative behavior. As such, the ``Optimizer`` will be iterable, which allows
-stepwise progression through the problem (via ``Optimizer.__next_``).
+stepwise progression through the problem (via ``Optimizer.__next__``).
 
 Different optimization algorithms can inherit from ``Optimizer``, with each of
 the subclass overriding the ``__next__`` method to represent the core of their
