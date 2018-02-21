@@ -244,10 +244,10 @@ Proposed solution
 We propose rewriting the ``minimize`` function with ``Optimizer`` and
 ``Function`` classes. We propose this in support of
 
-- allowing ease of use for ``minimize``
-- exposing a new API that allows for easier creation of new optimizers
-- cleaning the existing API
+- enhancing ease of use for ``minimize``
 - preserving backwards compatibility
+- exposing a new API that allows for easier use and creation of new optimizers
+- cleaning the existing API
 
 The ``Function`` class is responsible for calculating the function, gradient
 and Hessian (and will implement numerical differentiation gradient/Hessian
