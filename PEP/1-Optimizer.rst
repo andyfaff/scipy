@@ -269,53 +269,102 @@ API cleaning
 
 ``minimize`` hides a lot of detail, and there are many functions called during
 minimization. There is no interface to change any of the arguments to these
-functions or how they operate. For example, gradients can be approximated and
-line searches need to be performed. Below, we detail these two examples and
-point to specific spots where values could be changed.
+functions or how they operate. We have seen this an issue with
 
-The `Wolfe conditions`_ are met during minimization for the CG, BFGS and
-Newton-CG methods with the function ``_line_search_wolfe12``. These line
-searchs depend on two parameters, :math:`0 < c_1 < c_2 < 1` and may
+* gradient or Hessian approximation
+* expensive functions time-wise
+* step size selection
+
+and believe it could be an issue with
+
+* waiting for an optimization to finish (e.g., if running a web server)
+
+Additionally, we would like to allow easier access to solver state and enable
+new interactions. We detail these 6 use cases below.
+
+1. Gradient and Hessian approximation
+"""""""""""""""""""""""""""""""""""""
+
+2. Expensive functions time-wise
+""""""""""""""""""""""""""""""""
+
+3. Waiting for optimization to finish
+"""""""""""""""""""""""""""""""""""""
+
+4. Step size selection
+""""""""""""""""""""""
+
+Line searches are performed in some methods, though these may not be preformed.
+A significant task for any optimization algorithm is choosing the initial step
+size for an optimization. This is prevalent when stochastic optimizers or when
+functions are extremely expensive to evaluate.
+
+As such, scikit-learn has rewritten the Newton-CG method for evaluating
+expensive functions at `sklean/utils/optimize.py`_ because they saw issues with
+expensive time-wise functions. By default, they perform a line search with some
+modifications, but allow not setting the step size (and it's fixed to a
+constant value, there is no scheme to change the step size).
+
+.. _sklean/utils/optimize.py: https://github.com/scikit-learn/scikit-learn/blob/931fae8753ad0d9cef1c923ba38932074a8d8027/sklearn/utils/optimize.py
+
+When line searches are not desired, different methods are used to choose step
+size. In stochastic optimization, this is typically some decay rate, where the
+step size "decays" every step, or ``step = gamma * step`` where ``0 < gamma <
+1`` and is chosen by the user. This would be easiest to change if the
+optimization classes had some property to choose a step size, maybe
+``Optimizer.step_size`` which could call the line search method by default.
+
+In line searches, the `Wolfe conditions`_ are met during minimization for the
+CG, BFGS and Newton-CG methods with the function ``_line_search_wolfe12``.
+These line searchs depend on two parameters, :math:`0 < c_1 < c_2 < 1` and may
 fundamentally depend on the function being minimized and the dependence on any
 data. No interface to presented to change these values, and values presented in
 optimization papers are provided. Even choosing the initial step length is
 difficult, and it appears to be set to 1 and the function is assumed to be
 quadratic (`linesearch.py#L154-159`_).
 
-Additionally, it may not even be required to perform a line search with these
-methods if theoritical bounds are known, or if another minimize method is
-desired. This is especially true if the function or gradients are very
-expensive time-wise to evaluate. This is especially true if the function
-depends on many data, which is common. In these cases, different methods are
-used to choose step size. This would be easiest to change if the optimization
-classes had some property to choose a step size, maybe ``Optimizer.step_size``
-which could call the line search method by default.
+.. _linesearch.py#L154-159: https://github.com/scipy/scipy/blob/1fc6f171c1f5fec9eef6a74127b3cf4858cb632a/scipy/optimize/linesearch.py#L154-L159
 
-.. linesearch.py#L154-159: https://github.com/scipy/scipy/blob/1fc6f171c1f5fec9eef6a74127b3cf4858cb632a/scipy/optimize/linesearch.py#L154-L159
+.. _Wolfe conditions: https://en.wikipedia.org/wiki/Wolfe_conditions
 
-.. Wolfe conditions: https://en.wikipedia.org/wiki/Wolfe_conditions
+5. Access to solver state
+"""""""""""""""""""""""""
+
+6. New interactions
+"""""""""""""""""""
+
 
 .. note
 
-    * hides all details. Some are literal black boxes and implemented in Fortran/C.
-    * e.g., what if want to change step size? Choosing an initial step size is difficult. There's theoritical
-    bounds, but these are not known in practice.
-    * if the user doesn't provide a gradient function the minimizers currently use the same absolute step size
-      for numerical differentiation for the duration of the minimization. However, the fd-step size should
-      be relative to parameter value as it changes. Not easy to fix this in current implementation without
-      placing the onus on the user to write their own grad function, this is the job of the library.
-      The new Function object will offer more options for numerical differentiation (absolute step, relative
-      step, 2-point/3-point/complex step, bounds). Of course, the user can still provide their own gradient
-      implementation if preferred.
+    * hides all details. Some are literal black boxes and implemented in
+      Fortran/C.
+    * e.g., what if want to change step size? Choosing an initial step size is
+      difficult. There's theoritical bounds, but these are not known in
+      practice.
+    * if the user doesn't provide a gradient function the minimizers currently
+      use the same absolute step size for numerical differentiation for the
+      duration of the minimization. However, the fd-step size should be
+      relative to parameter value as it changes. Not easy to fix this in
+      current implementation without placing the onus on the user to write
+      their own grad function, this is the job of the library.  The new
+      Function object will offer more options for numerical differentiation
+      (absolute step, relative step, 2-point/3-point/complex step, bounds). Of
+      course, the user can still provide their own gradient implementation if
+      preferred.
     * would like ability to proceed stepwise through iteration
-      * What if running some web server, and don't have time to wait for minimization to finish?
-      * There's no easy way of halting minimization and still returning a solution. With the Optimizer
-        approach one can simply stop on the current iteration, if you're doing the stepping, and you
-        retain access to the current best solution. You can then restart at a later point. Moreover
-        if you are using the Optimizer.solve method that runs to convergence you can simply halt at anytime
-        by raising a StopIteration exception, either in the 'callback', or in your Function evaluation.
-        This could be done for current Optimizers, but only by amending all minimizers.
-      * user can use their own convergence criteria, don't need to depend on minimizer to halt.
+      * What if running some web server, and don't have time to wait for
+        minimization to finish?
+      * There's no easy way of halting minimization and still returning a
+        solution. With the Optimizer approach one can simply stop on the
+        current iteration, if you're doing the stepping, and you retain access
+        to the current best solution. You can then restart at a later point.
+        Moreover if you are using the Optimizer.solve method that runs to
+        convergence you can simply halt at anytime by raising a StopIteration
+        exception, either in the 'callback', or in your Function evaluation.
+        This could be done for current Optimizers, but only by amending all
+        minimizers.
+      * user can use their own convergence criteria, don't need to depend on
+        minimizer to halt.
     * would like to access solver state
       * e.g., current value of f(x)
       * e.g., for coding gradients
