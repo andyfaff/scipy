@@ -32,9 +32,9 @@ Scientific PEP -- Introduction of Optimizer and Function classes
            * `Function` - takes care of evaluating function, gradient, and hessian.
        * Goals:
             * enhancing ease of use for ``minimize``
+            * API cleaning and maintainability of ``minimize``
             * preserving backwards compatibility
             * exposing a new API to easily create optimizers
-            * cleaning the existing API
        * Example
    * Goals
        * enhancing ease of use for ``minimize``
@@ -221,18 +221,10 @@ Inheritance for standard interface
 
 .. note
 
-    Currently there is a hotch potch of warn_flag numbers that indicate problems
-    when a minimizer stops. Using an Optimizer class could standardise these. See
-    #7819 for discussion on this. The Optimizer class could return an
-
-Class features
---------------
-
-Standard operation
-^^^^^^^^^^^^^^^^^^
-
-.. note
-
+    * Currently there is a hotch potch of warn_flag numbers that indicate
+      problems when a minimizer stops. Using an Optimizer class could
+      standardise these. See #7819 for discussion on this. The Optimizer class
+      could return an
     * it would provide a standard way to operate the object, but all the
       classes would still have different names
     * give example of how sklearn could revamp (ask the developers how they'd
@@ -262,23 +254,12 @@ Third-party integration
       * We should think about multiprocessing or multithreaded algorithms like
         Hogwild!. How will these be used?
 
-Interaction
-^^^^^^^^^^^
 
 .. note
 
-    for enhancements to sklearn, dask-ml, etc. Possibly PyTorch. **Would those projects be prepared to state that?**
-
-Backwards compatibility
------------------------
-
-.. note
-
-    * Mention ``Optimizer.solve``, rewrite of ``minimize``
-    * backwards compatibility is a focus
-    * the functionality will remain but rely on the solver objects. Should be
-      able to remove `_minimize_lbfgsb`, etc.
-    * new solver objects can be used by themselves.
+    for enhancements to sklearn, dask-ml, etc. Possibly PyTorch. **Would those
+    projects be prepared to state that?** See the note at the top for libraries
+    to contact, etc
 
 API cleaning
 ------------
@@ -478,6 +459,17 @@ solution across scipy.optimize.
   standardises for all subclasses**
 * 3816 wrap_function seems not to be working when wrapper_args is a one element
   list **fix in Optimizer, fix in all** *subclasses**
+
+Backwards compatibility
+-----------------------
+
+.. note
+
+    * Mention ``Optimizer.solve``, rewrite of ``minimize``
+    * backwards compatibility is a focus
+    * the functionality will remain but rely on the solver objects. Should be
+      able to remove `_minimize_lbfgsb`, etc.
+    * new solver objects can be used by themselves.
 
 Existing work
 =============
