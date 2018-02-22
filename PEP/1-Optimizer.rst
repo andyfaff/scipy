@@ -482,6 +482,10 @@ solution across scipy.optimize.
 Existing work
 =============
 
+.. note
+
+    Projects related to sklearn: https://github.com/scikit-learn/scikit-learn/blob/4f710cdd088aa8851e8b049e4faafa03767fda10/doc/related_projects.rst
+
 Concerns
 ========
 
