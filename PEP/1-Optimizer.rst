@@ -1,5 +1,5 @@
 
-.. notes::
+.. notes
 
     * look into lowlevelcallables. If we can use those to get a good speedup from a cython based Optimizer, then that will
     provide impetus for support.
@@ -16,7 +16,7 @@
 Scientific PEP -- Introduction of Optimizer and Function classes
 ================================================================
 
-.. outline::
+.. outline
 
    * Abstract
    * Introduction
@@ -29,174 +29,45 @@ Scientific PEP -- Introduction of Optimizer and Function classes
    * Proposed solution
        * Classes (idea: `Function` and `Optimizer` class)
            * `Optimizer` - takes care of minimization and stepping
-           * `Function` - takes care of evaluating function, gradient, and hessian. Takes care of numerical differentiation
-             for grad and hess if required. Can be overridden if the user wishes to define their own grad/hess
-             implementations. This pattern is intrinsic, and is sort of **already in use** in scipy at
-             scipy/benchmarks/benchmarks/test_functions.py.
-           * This is the approach being taken in a constrained trust region minimizer in "ENH: optimize: ``trust-constr``
-             optimization algorithms [GSoC 2017]" under PR #8328, in which scalar functions are being described by a class
-             object. The problem setup is naturally suited to class based organisation.
+           * `Function` - takes care of evaluating function, gradient, and hessian.
        * Goals:
             * enhancing ease of use for ``minimize``
             * preserving backwards compatibility
             * exposing a new API to easily create optimizers
             * cleaning the existing API
-       * Give an example
+       * Example
    * Goals
        * enhancing ease of use for ``minimize``
            * Have to explain why minimize isn't a standard interface.
-               * Currently there is a hotch potch of warn_flag numbers that indicate problems when a minimizer stops. Using
-                 an Optimizer class could standardise these. See #7819 for discussion on this. The Optimizer class could
-                 return an
        * preserving backwards compatibility
        * exposing a new API to easily create optimizers
-           * Provide standard interface
-               * for enhancements to sklearn, dask-ml, etc. Possibly PyTorch. **Would those projects be prepared to state that?**
-               * it would provide a standard way to operate the object, but all the classes would still have different names
-               * give example of how sklearn could revamp (ask the developers how they'd use it)
+           * Provide standard interface for operation
            * Provide class features
-               * object interaction. Useful for experts, intermediates.
-               * expose alg hyperparameters (grid search, etc)
-               * keyboard interrupts
-               * introduction of context manager enables easy setup of cleanup actions
-                  * would make it easier have wholesale introduction of things like multiprocessing.
-                  * We should think about multiprocessing or multithreaded algorithms like Hogwild!. How will these be used?
-               * sklearn rewrite of optimize.py on Newton-CG. Only difference is one
-                 function call to get func/grad value and callable to Hessian:
-                 https://github.com/scikit-learn/scikit-learn/blob/931fae8753ad0d9cef1c923ba38932074a8d8027/sklearn/utils/optimize.py#L1-L10
        * cleaning the existing API
           * addition of new features to minimizers leads to lengthy functions and lots of duplicate code.
-              * Classes => inheritance. Base class improves => all improve. For example, placing numerical differentiation in
-              the Function class allows either absolute or relative delta change to be made easily, and in one place. To do
-              that for all minimizers would require modifications and extra keywords to all minimizer functions with the
-              attendant risk of introducing bugs in lots of places. Testing those changes is a lot harder.
-              * With Optimizer objects testing can be made a lot easier. If the base class is tested thoroughly then
-              subclasses with inherited methods are by definition covered. This is not the case for a multiplicity of
-              minimizer functions.
-              * Unix philisophy, small sharp tools for one job and one job only. Not many dull tools for the same job.
-          * Clean up minimize API (it's complicated right now)
-             * Require fewer arguments to minimize, and separate them
           * minimize is trying to be a class
-                 * method: should be subclasses
-                 * show_options: show method-specific args
-                 * some options specific to method (jac, hess, hessp, contraints, options, bounds)
-                 * OptimizeResult: trying to expose what should be properties of class
-                 * callback: not adequate (only sends one arg, not any internal state)
-                      * only sends `x`, not the potentially expensive `f(x), g(x), h(x)`.
-                          **the opposing argument here is that we could just add extra solver state information to the**
-                          **callback. ironically the easiest way to achieve this by using Optimizer objects, where**
-                          **once you've implemented a change to the base class all Optimizers access the benefits.**
-                      * What if some internal state is wanted?
           * function arg is trying to be a class
-              * jac, hess, hessp
-              * args (kwargs?)
           * there is no separation of concerns between function and minimizer
-              * meaning the minimizer is asking for numerical gradient calculations to be carried out.
-              * The correct place for grad computation belongs with the function, not the minimizer. Why does the minimizer
-                need numerical differentiation step values?
-              * Mixing of function arguments with optimization arguments (plus, there are too many arguments)
-              * no kwargs for func, only args
           * scipy.optimize.minimize is a black box (have to explain why)
-              * hides all details. Some are literal black boxes and implemented in Fortran/C.
-                  * e.g., what if want to change step size? Choosing an initial step size is difficult. There's theoritical
-                    bounds, but these are not known in practice.
-                  * if the user doesn't provide a gradient function the minimizers currently use the same absolute step size
-                      for numerical differentiation for the duration of the minimization. However, the fd-step size should
-                      be relative to parameter value as it changes. Not easy to fix this in current implementation without
-                      placing the onus on the user to write their own grad function, this is the job of the library.
-                      The new Function object will offer more options for numerical differentiation (absolute step, relative
-                      step, 2-point/3-point/complex step, bounds). Of course, the user can still provide their own gradient
-                      implementation if preferred.
-                  * would like ability to proceed stepwise through iteration
-                      * What if running some web server, and don't have time to wait for minimization to finish?
-                      * There's no easy way of halting minimization and still returning a solution. With the Optimizer
-                        approach one can simply stop on the current iteration, if you're doing the stepping, and you
-                        retain access to the current best solution. You can then restart at a later point. Moreover
-                        if you are using the Optimizer.solve method that runs to convergence you can simply halt at anytime
-                        by raising a StopIteration exception, either in the 'callback', or in your Function evaluation.
-                        This could be done for current Optimizers, but only by amending all minimizers.
-                      * user can use their own convergence criteria, don't need to depend on minimizer to halt.
-                  * would like to access solver state
-                      * e.g., current value of f(x)
-                      * e.g., for coding gradients
-                  * can't access solver state or hyper parameters, and change on fly
-                     * e.g. gradient coding as example
-                     * e.g. change convergence tolerances as we're going
-                     * e.g. change mutation constant during differential evolution.
    * Existing work
        * Class defs: PyTorch, skopt
        * Functional class wrapper around minimize: statsmodels, astropy, scikits.fitting
        * Functional defs: sklearn, daskml, skimage
        * Other:
          * scikit.optimization (class based, no webpage (download from PyPI)).
-   * Pushback
+   * Concerns
        * `minimize` is supposed to implement a unified interface
           (rewrite from fmin, fmin_bfgs, etc => mininimize)
-       * `minimize` is similar to `solve_ivp`
-         (see https://github.com/scipy/scipy/pull/8414#issuecomment-366372052)
-         I said "minimize has been an issue to me". Can point to other examples.
-         and implementing classes could lower barrier to implementing new minimizers
        * Why not apply to other solvers in `show_options`? `root`,
          `minimize_scalar`, `linprog`?
-           * We have personal experience that makes minimize a problem. We are
-             open to expanding this class interface but currently see no need
-             to expand root/minimize_scalar/linprog.
-   * The following open issues/PRs would be significantly easier to be addressed (or tackled by the user themselves) with
-     subclassing of an Optimizer base class. That there are many signifies the level of difficulty implementing a coherent
-     solution across scipy.optimize.
-      * 5832 grad.T should be returned but not documented
-      * 7819 WIP: Basin hopping improvements. **discusses behaviour of how a minimizer should signify success/failure, e.g.**
-        **if a constraint is violated**
-      * 7425 ENH: optimize: more complete callback signature. **easily achieved, Optimizer base class calls the callback**
-      * 6907 differential_evolution: improve callback **easily achieved, Optimizer base class calls the callback**
-      * 4384 ENH: optimize, returning True from callback function halts minimization **callback could return a StopIteration**
-        **which would simply stop at the current iteration in Optimizer.solve(), the optimization could then be restarted if**
-        **if desired**.
-      * 8375 optimize - check that maxiter is not exceeded **correct implementation is inherited by all Optimizers.**
-        **testing is simple for all Optimizers**
-      * 8419 (comment): "some optimize.minimize methods modify the parameter vector in-place", **is inherited by all**
-        **Optimizers**
-      * 8031 Scipy optimize.minimize maxfun has confusing behavior **maxfun behaviour is implemented by Optimizer base**
-        **class. Documentation in one place should make things clear**
-      * 8373 "scipy.optimize has broken my trust." mismatch between callback x and displayed output from L-BFGS-B
-      * 6019 "minimize_scalar doesn't honor disp option". **Optimizer base class can standardise iteration by iteration**
-        **displaying, and end of solve displaying. Inheriting Optimizers can override if absolutely necessary**
-      * 7854: "BUG: L-BFGS-B does two more iterations than specified in maxiter" **More easily tested with Optimizer class**
-      * 6673, "return value of scipy.optimize.minimize not consistent for 1D", **This can be standardised more easily**
-      * 7306 "any way of stopping optimization?". **Easily implemented by Optimizer. Either by raising StopIteration,**
-        **or by controlling the iteration yourself on a stepwise basis** One comment in this issue: "Beyond a pre-specified
-        iteration limit, I always wanted some way of gracefully terminating an optimization routine during execution. I was
-        working on problems that took a very long time to solve and sometimes I wanted to see what was going on when the
-        algorithm seemed close to a solution but never seemed to achieve the termination conditions.
-      * 6878 differential_evolution: make callback receive fun(xk) **User has full access to Optimizer, this is available**
-        **during stepwise iteration. Otherwise it should be straightforward to introduce an expanded callback**
-        **in a standardised fashion**
-      * 6026 Replace approx_grad with _numdiff.approx_derivative in scipy.optimize **all numerical differentiation done in**
-        **Function class, fix is only needed in one place. Optimizers don't need to know.**.
-      * 6019 minimize_scalar doesn't seem to honor "disp" option
-      * 5481 "1D root-finding interface and documentation could be improved" **Asking for a standardised approach to root**
-        **finding. May be possible to inherit Optimizer class for root finding to standardise behaviour.**
-      * 5161 Optimizers reporting success when the minimum is NaN. **this would be standardised to make success False**
-      * 4921 scipy.optimize maxiter option not working as expected **Optimizer.solve standardises for all subclasses**
-      * 3816 wrap_function seems not to be working when wrapper_args is a one element list **fix in Optimizer, fix in all**
-        *subclasses**
+   * Open bugs
    * Implementation
        * List functions, attributes in more depth
+       * Scope
        * Existing code
            * How would it work with C/Fortran optimizers?
            * What interface are we proposing? See proposed code below
        * Speed
-         * will be benchmarked to check that performance is not damaged. Class based system is easy to convert to cython.
-           **Using asv it's about a 25% extra time penalty for bfgs, lbfgsb, fmin (e.g. 252us to 310us). However,**
-           **those benchmarks use really quick functions. If one of the benchmarks was on much slower function**
-           **the overhead will be relatively minor compared to that going to an Optimizer class**
-       * Backwards compatibility
-         * backwards compatibility is a focus
-         * the functionality will remain but rely on the solver objects. Should be able to remove `_minimize_lbfgsb`, etc.
-         * new solver objects can be used by themselves.
-
-       * We should enumerate all the minimizers that would be targetted in this PR. NelderMead, LBFGSB, BFGS, ...? Perhaps
-       it's better if the classes aren't visible for a release or two? Roadmap for the rest of the minimizers?
 
 *Abstract*
 
@@ -249,6 +120,18 @@ We propose rewriting the ``minimize`` function with ``Optimizer`` and
 - exposing a new API to interact with an optimization, and easily create new
   optimizers
 - cleaning the existing API
+
+.. note
+
+    Takes care of numerical differentiation for grad and hess if required. Can
+    be overridden if the user wishes to define their own grad/hess
+    implementations. This pattern is intrinsic, and is sort of **already in
+    use** in scipy at scipy/benchmarks/benchmarks/test_functions.py.
+
+    This is the approach being taken in a constrained trust region minimizer in
+    "ENH: optimize: ``trust-constr`` optimization algorithms [GSoC 2017]" under PR
+    #8328, in which scalar functions are being described by a class object. The
+    problem setup is naturally suited to class based organisation.
 
 The ``Function`` class is responsible for calculating the function, gradient
 and Hessian (and will implement numerical differentiation gradient/Hessian
@@ -325,61 +208,83 @@ needs to be minimized over different training examples.
 
 Enhancements
 ============
+Ease of use
+-----------
 Standard interface
-------------------
+^^^^^^^^^^^^^^^^^^
+
+``minimize`` arguments
+^^^^^^^^^^^^^^^^^^^^^^
+
+Inheritance for standard interface
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.. note
+
+    Currently there is a hotch potch of warn_flag numbers that indicate problems
+    when a minimizer stops. Using an Optimizer class could standardise these. See
+    #7819 for discussion on this. The Optimizer class could return an
+
 Class features
 --------------
+
+Standard operation
+^^^^^^^^^^^^^^^^^^
+
+.. note
+
+    * it would provide a standard way to operate the object, but all the
+      classes would still have different names
+    * give example of how sklearn could revamp (ask the developers how they'd
+      use it)
+
+Object interaction
+^^^^^^^^^^^^^^^^^^
+
+
+.. note
+
+    * object interaction. Useful for experts, intermediates.
+    * expose alg hyperparameters (grid search, etc)
+    * keyboard interrupts
+
+Third-party integration
+^^^^^^^^^^^^^^^^^^^^^^^
+
+.. note
+
+    * sklearn rewrite of optimize.py on Newton-CG. Only difference is one
+      function call to get func/grad value and callable to Hessian:
+      https://github.com/scikit-learn/scikit-learn/blob/931fae8753ad0d9cef1c923ba38932074a8d8027/sklearn/utils/optimize.py#L1-L10
+    * introduction of context manager enables easy setup of cleanup actions
+      * would make it easier have wholesale introduction of things like
+        multiprocessing.
+      * We should think about multiprocessing or multithreaded algorithms like
+        Hogwild!. How will these be used?
+
+Interaction
+^^^^^^^^^^^
+
+.. note
+
+    for enhancements to sklearn, dask-ml, etc. Possibly PyTorch. **Would those projects be prepared to state that?**
+
+Backwards compatibility
+-----------------------
+
+.. note
+
+    * Mention ``Optimizer.solve``, rewrite of ``minimize``
+    * backwards compatibility is a focus
+    * the functionality will remain but rely on the solver objects. Should be
+      able to remove `_minimize_lbfgsb`, etc.
+    * new solver objects can be used by themselves.
+
 API cleaning
 ------------
 
-
-Motivation
-==========
-
-We believe the `minimize` API and interface need improvement. We have come to
-believe this through bug reports, personal experience and anecdotal evidence.
-
-This section formulates and itemizes why we believe the `minimize` interface
-could use improvement. In summary, this is because `minimize` is a black-box
-that hides many important details and has many features that would be better
-represented in class form. We also list issues filed that have surfaced
-because of related issues.
-
-No standard interface
----------------------
-
-Current API needs improvement
------------------------------
-
-`minimize` has many class features
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-``minimize`` takes the following (mostly optional) arguments:
-
-* ``fun``, a function to minimize. The arguments ``jac``, ``hess`` and ``hessp`` are
-  functions that represent the first or second order derivatives of `fun`.
-    * The derivatives are constrained to accepting the same arguments as ``fun``,
-      represented through the argument ``args``
-* ``method`` represents the minimization solver to use, and can be one of 13
-  possible values or a custom callable object
-* ``bounds`` and ``constraints`` are solver-specific options.
-* ``tol`` is some tolerance for termination that is solver-specific.
-* ``options`` is a dictionary of solver-specific options
-    * ``show_options`` that shows solver-specific options
-
-There is even a function ``show_options`` that shows solver specific options,
-even though some arguments are solver-specific.
-
-These arguments could be cleanly represented in a class structure. One base
-class could implement most of the structures common to a optimizer, and the
-rest could inherit.
-
-
-``minimize``'s ``func`` argument has many class features
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-``minimize`` doesn't expose other functions
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+``minimize`` is a black box
+^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 ``minimize`` hides a lot of detail, and there are many functions called during
 minimization. There is no interface to change any of the arguments to these
@@ -409,29 +314,229 @@ which could call the line search method by default.
 
 .. Wolfe conditions: https://en.wikipedia.org/wiki/Wolfe_conditions
 
+.. note
 
-Separation of function and minimizer
+    * hides all details. Some are literal black boxes and implemented in Fortran/C.
+    * e.g., what if want to change step size? Choosing an initial step size is difficult. There's theoritical
+    bounds, but these are not known in practice.
+    * if the user doesn't provide a gradient function the minimizers currently use the same absolute step size
+      for numerical differentiation for the duration of the minimization. However, the fd-step size should
+      be relative to parameter value as it changes. Not easy to fix this in current implementation without
+      placing the onus on the user to write their own grad function, this is the job of the library.
+      The new Function object will offer more options for numerical differentiation (absolute step, relative
+      step, 2-point/3-point/complex step, bounds). Of course, the user can still provide their own gradient
+      implementation if preferred.
+    * would like ability to proceed stepwise through iteration
+      * What if running some web server, and don't have time to wait for minimization to finish?
+      * There's no easy way of halting minimization and still returning a solution. With the Optimizer
+        approach one can simply stop on the current iteration, if you're doing the stepping, and you
+        retain access to the current best solution. You can then restart at a later point. Moreover
+        if you are using the Optimizer.solve method that runs to convergence you can simply halt at anytime
+        by raising a StopIteration exception, either in the 'callback', or in your Function evaluation.
+        This could be done for current Optimizers, but only by amending all minimizers.
+      * user can use their own convergence criteria, don't need to depend on minimizer to halt.
+    * would like to access solver state
+      * e.g., current value of f(x)
+      * e.g., for coding gradients
+    * can't access solver state or hyper parameters, and change on fly
+     * e.g. gradient coding as example
+     * e.g. change convergence tolerances as we're going
+     * e.g. change mutation constant during differential evolution.
+
+Duplicate code
+^^^^^^^^^^^^^^
+
+.. note
+
+    * Classes => inheritance. Base class improves => all improve. For example,
+      placing numerical differentiation in the Function class allows either
+      absolute or relative delta change to be made easily, and in one place. To
+      do that for all minimizers would require modifications and extra keywords
+      to all minimizer functions with the attendant risk of introducing bugs in
+      lots of places. Testing those changes is a lot harder.
+    * With Optimizer objects testing can be made a lot easier. If the base
+      class is tested thoroughly then subclasses with inherited methods are by
+      definition covered. This is not the case for a multiplicity of minimizer
+      functions.
+    * Unix philisophy, small sharp tools for one job and one job only. Not many
+      dull tools for the same job.
+
+``minimize``: class features
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+``minimize`` takes the following (mostly optional) arguments:
+
+* ``fun``, a function to minimize. The arguments ``jac``, ``hess`` and ``hessp`` are
+  functions that represent the first or second order derivatives of `fun`.
+    * The derivatives are constrained to accepting the same arguments as ``fun``,
+      represented through the argument ``args``
+* ``method`` represents the minimization solver to use, and can be one of 13
+  possible values or a custom callable object
+* ``bounds`` and ``constraints`` are solver-specific options.
+* ``tol`` is some tolerance for termination that is solver-specific.
+* ``options`` is a dictionary of solver-specific options
+    * ``show_options`` that shows solver-specific options
+
+There is even a function ``show_options`` that shows solver specific options,
+even though some arguments are solver-specific.
+
+These arguments could be cleanly represented in a class structure. One base
+class could implement most of the structures common to a optimizer, and the
+rest could inherit.
+
+.. note
+
+    * method: should be subclasses
+    * show_options: show method-specific args
+    * some options specific to method (jac, hess, hessp, contraints, options, bounds)
+    * OptimizeResult: trying to expose what should be properties of class
+    * callback: not adequate (only sends one arg, not any internal state)
+      * only sends `x`, not the potentially expensive `f(x), g(x), h(x)`.
+          **the opposing argument here is that we could just add extra solver state information to the**
+          **callback. ironically the easiest way to achieve this by using Optimizer objects, where**
+          **once you've implemented a change to the base class all Optimizers access the benefits.**
+      * What if some internal state is wanted?
+
+``function`` argument: class feature
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Repeated code
-^^^^^^^^^^^^^
+.. note
+
+    * jac, hess, hessp
+    * args (kwargs?)
+
+Arguments for ``minimize``
+^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.. note
+
+    * meaning the minimizer is asking for numerical gradient calculations to be carried out.
+    * The correct place for grad computation belongs with the function, not the minimizer. Why does the minimizer
+    need numerical differentiation step values?
+    * Mixing of function arguments with optimization arguments (plus, there are too many arguments)
+    * no kwargs for func, only args
+
 
 Open bugs
-^^^^^^^^^
+---------
+
+The following open issues/PRs would be significantly easier to be addressed (or
+tackled by the user themselves) with subclassing of an Optimizer base class.
+That there are many signifies the level of difficulty implementing a coherent
+solution across scipy.optimize.
+
+* 5832 grad.T should be returned but not documented
+* 7819 WIP: Basin hopping improvements. **discusses behaviour of how a
+  minimizer should signify success/failure, e.g.** **if a constraint is
+  violated**
+* 7425 ENH: optimize: more complete callback signature. **easily achieved,
+  Optimizer base class calls the callback**
+* 6907 differential_evolution: improve callback **easily achieved, Optimizer
+  base class calls the callback**
+* 4384 ENH: optimize, returning True from callback function halts minimization
+  **callback could return a StopIteration** **which would simply stop at the
+  current iteration in Optimizer.solve(), the optimization could then be
+  restarted if** **if desired**.
+* 8375 optimize - check that maxiter is not exceeded **correct implementation
+  is inherited by all Optimizers.** **testing is simple for all Optimizers**
+* 8419 (comment): "some optimize.minimize methods modify the parameter vector
+  in-place", **is inherited by all** **Optimizers**
+* 8031 Scipy optimize.minimize maxfun has confusing behavior **maxfun behaviour
+  is implemented by Optimizer base** **class. Documentation in one place should
+  make things clear**
+* 8373 "scipy.optimize has broken my trust." mismatch between callback x and
+  displayed output from L-BFGS-B
+* 6019 "minimize_scalar doesn't honor disp option". **Optimizer base class can
+  standardise iteration by iteration** **displaying, and end of solve
+  displaying. Inheriting Optimizers can override if absolutely necessary**
+* 7854: "BUG: L-BFGS-B does two more iterations than specified in maxiter"
+  **More easily tested with Optimizer class**
+* 6673, "return value of scipy.optimize.minimize not consistent for 1D", **This
+  can be standardised more easily**
+* 7306 "any way of stopping optimization?". **Easily implemented by Optimizer.
+  Either by raising StopIteration,** **or by controlling the iteration yourself
+  on a stepwise basis** One comment in this issue: "Beyond a pre-specified
+  iteration limit, I always wanted some way of gracefully terminating an
+  optimization routine during execution. I was working on problems that took a
+  very long time to solve and sometimes I wanted to see what was going on when
+  the algorithm seemed close to a solution but never seemed to achieve the
+  termination conditions.
+* 6878 differential_evolution: make callback receive fun(xk) **User has full
+  access to Optimizer, this is available** **during stepwise iteration.
+  Otherwise it should be straightforward to introduce an expanded callback**
+  **in a standardised fashion**
+* 6026 Replace approx_grad with _numdiff.approx_derivative in scipy.optimize
+  **all numerical differentiation done in** **Function class, fix is only
+  needed in one place. Optimizers don't need to know.**.
+* 6019 minimize_scalar doesn't seem to honor "disp" option
+* 5481 "1D root-finding interface and documentation could be improved" **Asking
+  for a standardised approach to root** **finding. May be possible to inherit
+  Optimizer class for root finding to standardise behaviour.**
+* 5161 Optimizers reporting success when the minimum is NaN. **this would be
+  standardised to make success False**
+* 4921 scipy.optimize maxiter option not working as expected **Optimizer.solve
+  standardises for all subclasses**
+* 3816 wrap_function seems not to be working when wrapper_args is a one element
+  list **fix in Optimizer, fix in all** *subclasses**
 
 Existing work
 =============
 
+Concerns
+========
+
+``minimize`` already presents a unifed interface
+------------------------------------------------
+
+
+``minimize`` is similar to root finding and linear programs
+-----------------------------------------------------------
+
+.. note
+
+    * We have personal experience that makes minimize a problem. We are open to
+      expanding this class interface but currently see no need to expand
+      root/minimize_scalar/linprog.
+    * `minimize` is similar to `solve_ivp` (see
+      https://github.com/scipy/scipy/pull/8414#issuecomment-366372052) I said
+      "minimize has been an issue to me". Can point to other examples.  and
+      implementing classes could lower barrier to implementing new minimizers
 
 Implementation
 ==============
 An Optimizer and Function class will be created. Using two classes clearly separates their functionality, for example, it shouldn't be necessary for a minimizer to worry about how gradients are calculated.
 
-Definition
-----------
+Speed
+-----
 
-Function class
---------------
+.. note
+
+    * will be benchmarked to check that performance is not damaged. Class based
+      system is easy to convert to cython.
+    * **Using asv it's about a 25% extra time penalty for bfgs, lbfgsb, fmin
+      (e.g. 252us to 310us). However,**
+    * **those benchmarks use really quick functions. If one of the benchmarks
+      was on much slower function**
+    * **the overhead will be relatively minor compared to that going to an
+      Optimizer class**
+
+Scope
+-----
+
+.. note
+
+       * We should enumerate all the minimizers that would be targetted in this
+         PR. NelderMead, LBFGSB, BFGS, ...? Perhaps it's better if the classes
+         aren't visible for a release or two? Roadmap for the rest of the
+         minimizers?
+
+
+``Optimizer``: methods and attributes
+-------------------------------------
+
+``Function``: methods and attributes
+-------------------------------------
+
 The Function class is responsible for evaluating its function, its gradient, and its Hessian. Minimization of scalar functions and vector functions will require separate implementations, but will have the same methods.
 
 .. code-block:: python
@@ -439,27 +544,25 @@ The Function class is responsible for evaluating its function, its gradient, and
     class Function():
 
         def __init__(self, func=None, grad=None, hess=None, fd_method='3-point', step=None):
-            # responsible for initialization
             ...
 
         def func(self, *args, **kwargs):
-            # responsible for calculating scalar/vector function
             ...
 
         def grad(self, *args, **kwargs):
-            # responsible for calculating gradient
             ...
 
         def hess(self, *args, **kwargs):
-            # responsible for calculating hessian
             ...
 
-There will be different ways of creating a function. Either the Function can be initialised with `func`, `grad`, `hess` callables, or a Function may be subclassed. If the Function is not subclassed then it must be initialised with a `func` callable. If `grad` and `hess` are not provided, or not overridden, then the gradient and hessian will be numerically estimated with finite differences. The finite differences will either be absolute or relative step (approx_fprime or approx_derivative), and controlled by the `fd_method` or `step` keywords.
-
-Existing code
--------------
-Backward compatibility
-----------------------
+There will be different ways of creating a function. Either the Function can be
+initialised with `func`, `grad`, `hess` callables, or a Function may be
+subclassed. If the Function is not subclassed then it must be initialised with
+a `func` callable. If `grad` and `hess` are not provided, or not overridden,
+then the gradient and hessian will be numerically estimated with finite
+differences. The finite differences will either be absolute or relative step
+(approx_fprime or approx_derivative), and controlled by the `fd_method` or
+`step` keywords.
 
 Existing implementations
 ------------------------
