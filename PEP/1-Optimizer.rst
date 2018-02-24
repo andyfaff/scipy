@@ -216,60 +216,79 @@ tackled by the user themselves) with subclassing of an Optimizer base class.
 That there are many signifies the level of difficulty implementing a coherent
 solution across the multiplicity of scipy.optimize minimizer functions.
 
-* 5832 grad.T should be returned but not documented
-* 7819 WIP: Basin hopping improvements. **discusses behaviour of how a
-  minimizer should signify success/failure, e.g.** **if a constraint is
-  violated**
-* 7425 ENH: optimize: more complete callback signature. **easily achieved,
-  Optimizer base class calls the callback with an intermediate Optimizer
-  result**
-* 6907 differential_evolution: improve callback **easily achieved, Optimizer
-  base class calls the callbac with an intermediate Optimizer resultk**
-* 4384 ENH: optimize, returning True from callback function halts minimization
-  **callback raises StopIteration** **which would simply stop at the
-  current iteration in Optimizer.solve(), the optimization could then be
-  restarted if** **if desired**.
-* 8375 optimize - check that maxiter is not exceeded **correct implementation
-  is inherited by all Optimizers.** **testing is simple for all Optimizers**
-* 8419 (comment): "some optimize.minimize methods modify the parameter vector
-  in-place", **is inherited by all** **Optimizers**
-* 8031 Scipy optimize.minimize maxfun has confusing behavior **maxfun behaviour
-  is implemented by Optimizer base** **class. Documentation in one place should
-  make things clear**
-* 8373 "scipy.optimize has broken my trust." mismatch between callback x and
-  displayed output from L-BFGS-B
-* 6019 "minimize_scalar doesn't honor disp option". **Optimizer base class can
-  standardise iteration by iteration** **displaying, and end of solve
-  displaying. Inheriting Optimizers can override if absolutely necessary**
-* 7854: "BUG: L-BFGS-B does two more iterations than specified in maxiter"
-  **More easily tested with Optimizer class**
-* 6673, "return value of scipy.optimize.minimize not consistent for 1D", **This
-  can be standardised more easily**
-* 7306 "any way of stopping optimization?". **Easily implemented by Optimizer.
-  Either by raising StopIteration,** **or by controlling the iteration yourself
-  on a stepwise basis** One comment in this issue: "Beyond a pre-specified
+Issues resolved by easier testing
+"""""""""""""""""""""""""""""""""
+
+* `PR#7819 <https://github.com/scipy/scipy/pull/7819>`_ WIP: Basin hopping
+  improvements.
+    * This PR discusses behavior of how a minimizer should signify
+      success/failure, e.g. if a constraint is violated
+* `PR#8375 <https://github.com/scipy/scipy/pull/8375>`_: optimize - check that maxiter is not exceeded
+    * Correct implementation
+  is inherited by all Optimizers. Testing is simple for all Optimizers
+* `#7854 <https://github.com/scipy/scipy/issues/7854>`_: "BUG: L-BFGS-B does two more iterations than specified in maxiter"
+    * Again, inheriting would help resolve this, in testing and implementation.
+* `#6019 <https://github.com/scipy/scipy/issues/6019>`_: "minimize_scalar doesn't honor disp option".
+    * Again, inheriting would help resolve this.
+
+Issues resolved by inheritance
+""""""""""""""""""""""""""""""
+
+* `#8419 <https://github.com/scipy/scipy/issues/8419>`_: "some optimize.minimize methods modify the parameter vector
+  in-place"
+    * This could beinherited by all ``Optimizer``s
+* `#6673 <https://github.com/scipy/scipy/issues/6673>`_, "return value of scipy.optimize.minimize not consistent for 1D"
+    * Again, inheriting would help resolve this, in testing and implementation.
+* `6019 <https://github.com/scipy/scipy/issues/6019>`_ minimize_scalar doesn't seem to honor "disp" option
+* `5161 <https://github.com/scipy/scipy/issues/5161>`_ "Optimizers reporting success when the minimum is NaN."
+    * This would be standardized to make success False
+* `4921 <https://github.com/scipy/scipy/issues/4921>`_ "scipy.optimize maxiter option not working as expected"
+    * Optimizer.solve could standardises for all subclasses
+* `3816 <https://github.com/scipy/scipy/issues/3816>`_ wrap_function seems not to be working when wrapper_args is a one element
+  list
+    * fix in Optimizer, fix in all subclasses
+
+Issues related to class interaction
+"""""""""""""""""""""""""""""""""""
+* `PR#7425 <https://github.com/scipy/scipy/pull/7425>`_ ENH: optimize: more
+  complete callback signature.
+    * ``Optimizer`` calls the callback with an intermediate Optimizer result
+* `PR#6907 <https://github.com/scipy/scipy/pull/6907>`_ differential_evolution:
+  improve callback
+    * ``Optimizer`` base or sub class calls the callback with an intermediate
+      Optimizer result
+* `PR#4384 <https://github.com/scipy/scipy/pull/4384>`_: ENH: optimize, returning True from callback function halts minimization
+    * Callback raises StopIteration, which would simply stop at the current
+  iteration in ``Optimizer.solve()``. The optimization could then be restarted if
+  if desired.
+* `#7306 <https://github.com/scipy/scipy/issues/7306>`_ "any way of stopping optimization?".
+    * Quote: "Beyond a pre-specified
   iteration limit, I always wanted some way of gracefully terminating an
   optimization routine during execution. I was working on problems that took a
   very long time to solve and sometimes I wanted to see what was going on when
   the algorithm seemed close to a solution but never seemed to achieve the
-  termination conditions.
-* 6878 differential_evolution: make callback receive fun(xk) **User has full
-  access to Optimizer, this is available** **during stepwise iteration.
-  Otherwise it should be straightforward to introduce an expanded callback**
-  **in a standardised fashion**
-* 6026 Replace approx_grad with _numdiff.approx_derivative in scipy.optimize
-  **all numerical differentiation done in** **Function class, fix is only
-  needed in one place. Optimizers don't need to know.**.
-* 6019 minimize_scalar doesn't seem to honor "disp" option
-* 5481 "1D root-finding interface and documentation could be improved" **Asking
-  for a standardised approach to root** **finding. May be possible to inherit
-  Optimizer class for root finding to standardise behaviour.**
-* 5161 Optimizers reporting success when the minimum is NaN. **this would be
-  standardised to make success False**
-* 4921 scipy.optimize maxiter option not working as expected **Optimizer.solve
-  standardises for all subclasses**
-* 3816 wrap_function seems not to be working when wrapper_args is a one element
-  list **fix in Optimizer, fix in all** *subclasses**
+  termination conditions."
+    * Easily controlled with more interaction with the Optimizer.
+* `6878 <https://github.com/scipy/scipy/issues/6878>`_ differential_evolution: make callback receive fun(xk)
+    * Straightforward with more interaction
+* `6026 <https://github.com/scipy/scipy/issues/6026>`_ "Replace approx_grad with _numdiff.approx_derivative in scipy.optimize"
+    * All numerical diff done in ``Function``, fix needed in one place.
+      Optimizers don't need to know
+
+Documentation issues
+""""""""""""""""""""
+* `#5832 <https://github.com/scipy/scipy/issues/5832>`_ grad.T should be
+  returned but not documented
+* `#8031 <https://github.com/scipy/scipy/issues/8031>`_: "Scipy optimize.minimize maxfun has confusing behavior".
+    * Documentation in one place should make things clear
+* `#8373 <https://github.com/scipy/scipy/issues/8373>`_ "scipy.optimize has broken my trust."
+    * A quote: "This has cost me dozens of hours of debugging time, only to learn that something is wrong with L-BFGS-B that causes the output of options={'disp': True} to not be the the cost function at a given parameter vector."
+    * Again, inheriting would help resolve this.
+* `5481 <https://github.com/scipy/scipy/issues/5481>`_ "1D root-finding interface and documentation could be improved" (asking
+  for a standardised approach to root finding).
+    * May be possible to inherit Optimizer class for root finding to standardise behaviour?
+
+
 
 
 Ease of use
@@ -472,7 +491,7 @@ minimization function. See the rewrite of Newton-CG in scikit-learn at
 * ``bounds`` and ``constraints`` are solver-specific options.
 * ``tol`` is some tolerance for termination that is solver-specific.
 * ``options`` is a dictionary of solver-specific options
-    * ``show_options`` that shows solver-specific options
+    * show_options that shows solver-specific options
 
 There is even a function ``show_options`` that shows solver specific options,
 even though some arguments are solver-specific.
@@ -480,6 +499,29 @@ even though some arguments are solver-specific.
 These arguments could be cleanly represented in a class structure. One base
 class could implement most of the structures common to a optimizer, and the
 rest could inherit.
+
+The ``OptimizeResult`` tries to expose parameters of a class. But again, there
+is no way for a user to change which values are represented in a particular
+``OptimizeResult``. Introducing a class would allow the user to view or modify
+any value or method the class exposes.
+
+Argument and method mixing
+""""""""""""""""""""""""""
+
+* The minimizer currently performs numerical gradient approximation. We believe
+  this concern should be delegated to a ``Function`` class.
+* Why are function arguments (i.e., ``args``) mixed with optimization
+  arguments? Why isn't there an argument for keyword arguments? What if these
+  arguments change over time?
+
+``callback`` arguments
+""""""""""""""""""""""
+
+The ``callback`` argument is not adequate for advanced use. It only sends the
+current estimate ``x``, not the values of ``func``, ``grad`` or ``hess``. It
+also does not send any other information that may be required in previous
+function evaluations. The easiest way for ``callback`` to function for advanced
+use is to use some class (which is what we are proposing in ``Function``).
 
 .. note
 
@@ -493,25 +535,6 @@ rest could inherit.
           **callback. ironically the easiest way to achieve this by using Optimizer objects, where**
           **once you've implemented a change to the base class all Optimizers access the benefits.**
       * What if some internal state is wanted?
-
-``function`` argument: class feature
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-.. note
-
-    * jac, hess, hessp
-    * args (kwargs?)
-
-Arguments for ``minimize``
-^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-.. note
-
-    * meaning the minimizer is asking for numerical gradient calculations to be carried out.
-    * The correct place for grad computation belongs with the function, not the minimizer. Why does the minimizer
-    need numerical differentiation step values?
-    * Mixing of function arguments with optimization arguments (plus, there are too many arguments)
-    * no kwargs for func, only args
 
 
 Backwards compatibility
