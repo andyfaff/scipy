@@ -156,8 +156,18 @@ The proposed changes will be transparent to an end-user of ``minimize``, or
 and ``Function`` classes.  We claim the implementation of these classes will
 clean the ``minimize`` implementation, provide a tighter standard interface,
 allow easy extensibility and provide other class features. We expand upon each
-of these points after presenting a brief example.
+of these points after presenting a timeline.
 
+Timeline
+--------
+
+1. The Optimizer, Function classes are privately introduced, with subclasses
+   for some minimizers (NelderMead, LBFGS, BFGS) are added. They will be used
+   as the core functionality of ``fmin``, etc.
+2. Subsequent classes for the remaining minimizers will be created privately.
+   This will allow tuning of the Optimizer and Function classes.
+3. The ``Optimizer`` and ``Function`` classes will be available in the SciPy
+   public API
 
 Enhancements
 ============
@@ -335,8 +345,8 @@ and believe it could be an issue with
 Additionally, we would like to allow easier access to solver state and enable
 new interactions. We detail these 6 use cases below.
 
-1. Gradient and Hessian approximation
-"""""""""""""""""""""""""""""""""""""
+Gradient and Hessian approximation
+""""""""""""""""""""""""""""""""""
 
 The ``Function`` class could take care of numerical differentiation for grad
 and hess if required. It could be overridden if the user wishes to define their
@@ -352,27 +362,49 @@ problem setup is naturally suited to class based organisation.
 
 .. _PR#8328: https://github.com/scipy/scipy/pull/8328
 
-2. Expensive functions time-wise
-""""""""""""""""""""""""""""""""
+Expensive functions time-wise
+"""""""""""""""""""""""""""""
 
-3. Waiting for optimization to finish
-"""""""""""""""""""""""""""""""""""""
+If function evaluation is expensive time-wise, there may be some more
+optimizations required based on low level functions calls. Currently, this
+requires rewriting the function and all the functions that call the function
+desired to be changed.
 
-4. Step size selection
-""""""""""""""""""""""
+A good example is at scikit-learn, where they've rewritten the Newton-CG method
+for evaluating expensive functions at `sklean/utils/optimize.py`_ because they
+saw issues with expensive time-wise functions. By default, they perform a line
+search with some modifications, but allow not setting the step size (and it's
+fixed to a constant value, there is no scheme to change the step size).
+
+.. _sklean/utils/optimize.py: https://github.com/scikit-learn/scikit-learn/blob/931fae8753ad0d9cef1c923ba38932074a8d8027/sklearn/utils/optimize.py
+
+User interaction
+""""""""""""""""
+
+Introducing a class for optimizations allows users to interact more closely
+with their optimization, a very practical issue. A class definition could allow
+to more access to solver state, including
+
+* getting the current value of ``func`` without another function call
+* allowing users to define the own convergence critieria (e.g., accuracy for a
+  machine learning model)
+* changing the mutation constant during differential evolution
+* coding the gradient (e.g., as in `QSGD`_ and `TernGrad`_)
+* allowing the user to compute other statistics partway through their
+  optimization
+    * Especially when the function is expensive to calculate and the statistics
+      depend on the current value of the function and derivative
+
+.. _QSGD: https://arxiv.org/abs/1610.02132
+.. _TernGrad: https://arxiv.org/pdf/1705.07878.pdf
+
+Step size selection
+"""""""""""""""""""
 
 Line searches are performed in some methods, though these may not be preformed.
 A significant task for any optimization algorithm is choosing the initial step
 size for an optimization. This is prevalent when stochastic optimizers or when
 functions are extremely expensive to evaluate.
-
-As such, scikit-learn has rewritten the Newton-CG method for evaluating
-expensive functions at `sklean/utils/optimize.py`_ because they saw issues with
-expensive time-wise functions. By default, they perform a line search with some
-modifications, but allow not setting the step size (and it's fixed to a
-constant value, there is no scheme to change the step size).
-
-.. _sklean/utils/optimize.py: https://github.com/scikit-learn/scikit-learn/blob/931fae8753ad0d9cef1c923ba38932074a8d8027/sklearn/utils/optimize.py
 
 When line searches are not desired, different methods are used to choose step
 size. In stochastic optimization, this is typically some decay rate, where the
@@ -381,24 +413,9 @@ step size "decays" every step, or ``step = gamma * step`` where ``0 < gamma <
 optimization classes had some property to choose a step size, maybe
 ``Optimizer.step_size`` which could call the line search method by default.
 
-In line searches, the `Wolfe conditions`_ are met during minimization for the
-CG, BFGS and Newton-CG methods with the function ``_line_search_wolfe12``.
-These line searchs depend on two parameters, :math:`0 < c_1 < c_2 < 1` and may
-fundamentally depend on the function being minimized and the dependence on any
-data. No interface to presented to change these values, and values presented in
-optimization papers are provided. Even choosing the initial step length is
-difficult, and it appears to be set to 1 and the function is assumed to be
-quadratic (`linesearch.py#L154-159`_).
-
-.. _linesearch.py#L154-159: https://github.com/scipy/scipy/blob/1fc6f171c1f5fec9eef6a74127b3cf4858cb632a/scipy/optimize/linesearch.py#L154-L159
-
-.. _Wolfe conditions: https://en.wikipedia.org/wiki/Wolfe_conditions
-
-5. Access to solver state
-"""""""""""""""""""""""""
-
-6. New interactions
-"""""""""""""""""""
+Changing these step size method used for optimization requires rewriting the
+minimization function. See the rewrite of Newton-CG in scikit-learn at
+`sklean/utils/optimize.py`_ for more detail.
 
 
 .. note
@@ -508,17 +525,6 @@ the scipy public API the new objects can be use by themselves
 
     * Mention ``Optimizer.solve``, rewrite of ``minimize``
 
-Timeline
---------
-1. The Optimizer, Function, NelderMead, LBFGS, BFGS classes are added. These are
-used as the core functionality for fmin, etc. These classes will be private to
-start with.
-2. Subsequent (private) classes for remaining scalar minimizers are created. Tuning
-of the Optimizer and Function classes can occur with experience gained from the
-first batch. This follows lessons learnt during writing of
-``DifferentialEvolutionSolver``.
-3. Once the fine tuning of the classes are completed the classes are made visible
-in the scipy public API.
 
 Existing work
 =============
