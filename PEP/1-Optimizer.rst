@@ -118,23 +118,11 @@ We propose rewriting the ``minimize`` function with ``Optimizer`` and
 ``Function`` classes. We propose this in support of
 
 - enhancing ease of use for ``minimize``
+- easier maintenance, test, and develop.
 - preserving backwards compatibility
 - exposing a new API to interact with an optimization, and easily create new
   optimizers
-- easier maintenance, test, and develop.
 - cleaning the existing API
-
-.. note
-
-    Takes care of numerical differentiation for grad and hess if required. Can
-    be overridden if the user wishes to define their own grad/hess
-    implementations. This pattern is intrinsic, and is sort of **already in
-    use** in scipy at scipy/benchmarks/benchmarks/test_functions.py.
-
-    This is the approach being taken in a constrained trust region minimizer in
-    "ENH: optimize: ``trust-constr`` optimization algorithms [GSoC 2017]" under PR
-    #8328, in which scalar functions are being described by a class object. The
-    problem setup is naturally suited to class based organisation.
 
 The ``Function`` class is responsible for calculating the function, gradient
 and Hessian (and will implement numerical differentiation gradient/Hessian
@@ -170,48 +158,6 @@ clean the ``minimize`` implementation, provide a tighter standard interface,
 allow easy extensibility and provide other class features. We expand upon each
 of these points after presenting a brief example.
 
-Example
--------
-
-This is an example of machine learning. A function (``L2Loss``) is defined and
-needs to be minimized over different training examples.
-
-.. code-block:: python
-
-    from scipy.optimize import Function, Optimizer
-
-    class L2Loss(Function):
-        def __init__(self, A, y, *args, **kwargs):
-            self.A = A
-            self.y = y
-            super().__init__(self, *args, **kwargs)
-
-        def func(x):
-            return LA.norm(self.A@x - self.y)**2
-
-        def grad(x):
-            return 2 * self.A.T @ (self.A@x - self.y)
-
-    class GradientDescent(Optimizer):
-        def __init__(self, *args, step_size=1e-3, **kwargs):
-            self.step_size = step_size
-            super().__init__(*arg, **kwargs)
-
-        def __next__(self):
-            self.x -= self.step_size*self.grad(x)
-
-    if __name__ == "__main__":
-        n, d = 100, 10
-        A = np.random.randn(n, d)
-        x_star = np.random.randn(d)
-        y = np.sign(A @ x_star)
-
-        loss = L2Loss(A, y)
-        opt = GradientDescent(loss)
-
-        for k, _ in enumerate(opt):  # Optimizer.__next__ implement minimization
-            if k % 100 == 0:
-                compute_stats(opt, loss)
 
 Enhancements
 ============
@@ -222,31 +168,33 @@ Simplified maintenance
 The maintenance burden of the new classes will be significantly reduced compared
 to the current state of scipy.optimize. It will be easier to develop new
 features and provide more comprehensive testing.
+
 The main reason for this is class inheritance. Improvements made to the base
 ``Optimizer`` class mean that all that all inheriting objects improve. Currently
 such changes have to be made in each minimizer, which leads to code duplication,
 and the attendant risk of bugs being introduced.
-For example::
 
-    * placing numerical differentiation in the Function class allows either
-      absolute or relative delta change to be made easily, and in one place. To
-      do that for the current codebase would require modifications and extra
-      keywords for all minimizer functions.
-    * The user wishes to halt optimization early (#4384, #7306). This would
-      be simply achieved in the new framework by the user raising
-      ``StopIteration`` in a callback, or the function evaluation. This is
-      handled in a single place in the ``Optimizer.solve`` method of the base
-      class. However, with current situation each scalar minimizer would have to
-      undergo significant changes to implement this, with a try/except around
-      every function/callback, and a large amount of duplicate code.
-    * More comprehensive testing than currently achievable is enabled. Instance
-      methods are common to all classes, and the methods have less branching.
-      Deep testing of a single base class method means that all inheriting classes
-      are then covered. With the current monolithic minimizer functions it is
-      harder to write tests to cover every eventuality. For example with the
-      ``StopIteration`` example given above, the Exception could be raised in
-      many places, each of which would have to be tested, with slightly different
-      tests for each scalar minimizer.
+For example:
+
+* placing numerical differentiation in the Function class allows either
+  absolute or relative delta change to be made easily, and in one place. To
+  do that for the current codebase would require modifications and extra
+  keywords for all minimizer functions.
+* The user wishes to halt optimization early (#4384, #7306). This would
+  be simply achieved in the new framework by the user raising
+  ``StopIteration`` in a callback, or the function evaluation. This is
+  handled in a single place in the ``Optimizer.solve`` method of the base
+  class. However, with current situation each scalar minimizer would have to
+  undergo significant changes to implement this, with a try/except around
+  every function/callback, and a large amount of duplicate code.
+* More comprehensive testing than currently achievable is enabled. Instance
+  methods are common to all classes, and the methods have less branching.
+  Deep testing of a single base class method means that all inheriting classes
+  are then covered. With the current monolithic minimizer functions it is
+  harder to write tests to cover every eventuality. For example with the
+  ``StopIteration`` example given above, the Exception could be raised in
+  many places, each of which would have to be tested, with slightly different
+  tests for each scalar minimizer.
 
 The ease of maintenance of the new approach is discussed in the next section.
 
@@ -389,6 +337,20 @@ new interactions. We detail these 6 use cases below.
 
 1. Gradient and Hessian approximation
 """""""""""""""""""""""""""""""""""""
+
+The ``Function`` class could take care of numerical differentiation for grad
+and hess if required. It could be overridden if the user wishes to define their
+own gradient or Hessian implementations. This is approximately in use at
+the SciPy benchmarks in `test_functions.py`_.
+
+.. _test_functions.py: https://github.com/scipy/scipy/blob/895a7741b12c2c3f816bfd27e5249468bea64a26/benchmarks/benchmarks/test_functions.py
+
+This is the approach being taken in a constrained trust region minimizer in
+"ENH: optimize: ``trust-constr`` optimization algorithms [GSoC 2017]" under
+`PR#8328`_, in which scalar functions are being described by a class object. The
+problem setup is naturally suited to class based organisation.
+
+.. _PR#8328: https://github.com/scipy/scipy/pull/8328
 
 2. Expensive functions time-wise
 """"""""""""""""""""""""""""""""
@@ -682,6 +644,46 @@ Existing implementations
 
 Example usage
 -------------
+
+This is an example of machine learning. A function (``L2Loss``) is defined and
+needs to be minimized over different training examples.
+
+.. code-block:: python
+
+    from scipy.optimize import Function, Optimizer
+
+    class L2Loss(Function):
+        def __init__(self, A, y, *args, **kwargs):
+            self.A = A
+            self.y = y
+            super().__init__(self, *args, **kwargs)
+
+        def func(x):
+            return LA.norm(self.A@x - self.y)**2
+
+        def grad(x):
+            return 2 * self.A.T @ (self.A@x - self.y)
+
+    class GradientDescent(Optimizer):
+        def __init__(self, *args, step_size=1e-3, **kwargs):
+            self.step_size = step_size
+            super().__init__(*arg, **kwargs)
+
+        def __next__(self):
+            self.x -= self.step_size*self.grad(x)
+
+    if __name__ == "__main__":
+        n, d = 100, 10
+        A = np.random.randn(n, d)
+        x_star = np.random.randn(d)
+        y = np.sign(A @ x_star)
+
+        loss = L2Loss(A, y)
+        opt = GradientDescent(loss)
+
+        for k, _ in enumerate(opt):  # Optimizer.__next__ implement minimization
+            if k % 100 == 0:
+                compute_stats(opt, loss)
 
 .. code-block:: python
 
