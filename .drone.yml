@@ -6,7 +6,7 @@ platform:
   arch: amd64
 
 steps:
-- name: install dependencies
+- name: test
   image: python:3.8
   commands:
   - |
@@ -16,9 +16,6 @@ steps:
     python3 -m pip install --upgrade pip
     python3 -m pip install cython numpy pybind11
 
-- name: build
-  commands:
-  - |
     python3 runtests.py
 
 #---
