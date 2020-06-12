@@ -6,13 +6,20 @@ platform:
   arch: amd64
 
 steps:
-- name: test
+- name: install dependencies
   image: python:3.8
   commands:
   - |
     apt-get update
     apt-get install -y libatlas-base-dev liblapack-dev gfortran libgmp-dev libmpfr-dev libsuitesparse-dev swig libmpc-dev
 
+    python3 -m pip install --upgrade pip
+    python3 -m pip install cython numpy pybind11
+
+- name: build
+  commands:
+  - |
+    python3 runtests.py
 
 #---
 #kind: pipeline
