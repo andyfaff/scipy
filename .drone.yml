@@ -14,7 +14,7 @@ steps:
     apt-get install -y libatlas-base-dev liblapack-dev gfortran libgmp-dev libmpfr-dev libsuitesparse-dev swig libmpc-dev
 
     python3 -m pip install --upgrade pip
-    python3 -m pip install cython numpy pybind11
+    python3 -m pip install cython gmpy2 pytest pytest-xdist pybind11 pytest-xdist mpmath scikit-umfpack scikit-sparse
 
     python3 runtests.py
 
