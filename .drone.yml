@@ -15,7 +15,7 @@ steps:
 
     python3 -m pip install --upgrade pip
     python3 -m pip install cython numpy
-    python3 -m pip install gmpy2 pytest pytest-xdist pybind11 pytest-xdist mpmath scikit-umfpack scikit-sparse
+    python3 -m pip install pytest pytest-xdist pybind11 pytest-xdist
 
     python3 runtests.py
 
