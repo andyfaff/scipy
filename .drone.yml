@@ -7,14 +7,14 @@ platform:
 
 steps:
 - name: test
-  image: python:3.8
+  image: ubuntu:focal
   commands:
   - |
     apt-get update
-    apt-get install -y libatlas-base-dev liblapack-dev gfortran libgmp-dev libmpfr-dev libsuitesparse-dev swig libmpc-dev
+    apt-get install -y python3-dev python3-pip python3-numpy libatlas-base-dev liblapack-dev gfortran libgmp-dev libmpfr-dev libsuitesparse-dev swig libmpc-dev
 
     python3 -m pip install --upgrade pip
-    python3 -m pip install cython numpy
+    python3 -m pip install cython
     python3 -m pip install pytest pytest-xdist pybind11 pytest-xdist
 
     python3 runtests.py
