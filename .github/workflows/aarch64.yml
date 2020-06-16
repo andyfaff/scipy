@@ -1,0 +1,28 @@
+name: aarch64
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+
+
+jobs:
+  armv8_job:
+    runs-on: ubuntu-20.04
+    name: Build on aarch64
+    steps:
+      - uses: actions/checkout@v2.1.0
+      - uses: uraimo/run-on-arch-action@v1.0.9
+        id: runcmd
+        with:
+          architecture: aarch64
+          distribution: ubuntu20.04
+          run: |
+            uname -a
+            sudo apt-get update
+            sudo apt-get install -y --no-install-recommends python3.8-dev \
+              python3.8-distutils python3.8-venv python3-pip \
+              libatlas-base-dev liblapack-dev gfortran ccache
+            python3.8 -m pip install numpy cython pybind11
+            python3.8 runtests.py
