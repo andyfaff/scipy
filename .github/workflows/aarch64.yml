@@ -20,8 +20,8 @@ jobs:
           distribution: ubuntu20.04
           run: |
             uname -a
-            sudo apt-get update
-            sudo apt-get install -y --no-install-recommends python3.8-dev \
+            apt-get update
+            apt-get install -y --no-install-recommends python3.8-dev \
               python3.8-distutils python3.8-venv python3-pip \
               libatlas-base-dev liblapack-dev gfortran ccache
             python3.8 -m pip install numpy cython pybind11
