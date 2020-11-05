@@ -37,27 +37,27 @@ jobs:
         python -m pip install --upgrade pip setuptools
         sudo apt-get install -y --no-install-recommends libatlas-base-dev liblapack-dev gfortran libgmp-dev libmpfr-dev libsuitesparse-dev ccache libmpc-dev
 
-    - name: Prepare ccache timestamp
+    - name: Prepare ccache
       id: ccache_cache_timestamp
       shell: cmake -P {0}
       run: |
         string(TIMESTAMP current_date "%Y-%m-%d-%H;%M;%S" UTC)
         message("::set-output name=timestamp::${current_date}")
 
-    - name: ccache cache files
-      uses: actions/cache@v1.1.0
-      with:
-        path: .ccache
-        key: scipy-ccache-${{ steps.ccache_cache_timestamp.outputs.timestamp }}
-        restore-keys: |
-          scipy-ccache-
-      run: |
         # Update symlinks
         sudo /usr/sbin/update-ccache-symlinks
         # Prepend ccache into the PATH
         echo 'export PATH="/usr/lib/ccache:$PATH"' | tee -a ~/.bashrc
         # Source bashrc to test the new PATH
         source ~/.bashrc && echo $PATH
+
+    - name: ccache cache files
+      uses: actions/cache@v1.1.0
+      with:
+        path: .ccache
+        key: ${{ matrix.config.name }}-ccache-${{ steps.ccache_cache_timestamp.outputs.timestamp }}
+        restore-keys: |
+          ${{ matrix.config.name }}-ccache-
 
     - name: Install packages
       run: |
@@ -70,7 +70,11 @@ jobs:
         CCACHE_COMPRESSLEVEL: "6"
         CCACHE_MAXSIZE: "400M"
       run: |
-        python -u runtests.py -m fast
+        python tools/suppress_output.py python setup.py build
+        python tools/suppress_output.py pip wheel --no-build-isolation .
+        pip install --no-cache-dir scipy*.whl
+
+        python -u runtests.py -g -j2 -m fast --no-build -- -rfEX --durations=10
 
         # print statistics for ccache
         ccache -s
