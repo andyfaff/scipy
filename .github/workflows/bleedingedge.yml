@@ -37,19 +37,12 @@ jobs:
         python -m pip install --upgrade pip setuptools
         sudo apt-get install -y --no-install-recommends libatlas-base-dev liblapack-dev gfortran libgmp-dev libmpfr-dev libsuitesparse-dev ccache libmpc-dev
 
-    - name: Prepare ccache
+    - name: ccache timestamp
       id: ccache_cache_timestamp
       shell: cmake -P {0}
       run: |
         string(TIMESTAMP current_date "%Y-%m-%d-%H;%M;%S" UTC)
         message("::set-output name=timestamp::${current_date}")
-
-        # Update symlinks
-        sudo /usr/sbin/update-ccache-symlinks
-        # Prepend ccache into the PATH
-        echo 'export PATH="/usr/lib/ccache:$PATH"' | tee -a ~/.bashrc
-        # Source bashrc to test the new PATH
-        source ~/.bashrc && echo $PATH
 
     - name: ccache cache files
       uses: actions/cache@v1.1.0
@@ -58,6 +51,15 @@ jobs:
         key: ${{ matrix.config.name }}-ccache-${{ steps.ccache_cache_timestamp.outputs.timestamp }}
         restore-keys: |
           ${{ matrix.config.name }}-ccache-
+
+    - name: ccache setup
+      run: |
+        # Update symlinks
+        sudo /usr/sbin/update-ccache-symlinks
+        # Prepend ccache into the PATH
+        echo 'export PATH="/usr/lib/ccache:$PATH"' | tee -a ~/.bashrc
+        # Source bashrc to test the new PATH
+        source ~/.bashrc && echo $PATH
 
     - name: Install packages
       run: |
