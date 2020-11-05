@@ -47,7 +47,7 @@ jobs:
     - name: ccache cache files
       uses: actions/cache@v1.1.0
       with:
-        path: .ccache
+        path: $GITHUB_WORKSPACE/.ccache
         key: ${{ matrix.config.name }}-ccache-${{ steps.ccache_cache_timestamp.outputs.timestamp }}
         restore-keys: |
           ${{ matrix.config.name }}-ccache-
@@ -74,9 +74,9 @@ jobs:
       run: |
         python tools/suppress_output.py python setup.py build
         python tools/suppress_output.py pip wheel --no-build-isolation .
-        pip install --no-cache-dir scipy*.whl
+#        pip install --no-cache-dir scipy*.whl
 
-        python -u runtests.py -g -j2 -m fast --no-build -- -rfEX --durations=10
+#        python -u runtests.py -g -j2 -m fast --no-build -- -rfEX --durations=10
 
         # print statistics for ccache
         ccache -s
