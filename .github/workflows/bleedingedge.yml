@@ -75,8 +75,6 @@ jobs:
         python tools/suppress_output.py python setup.py build
         python tools/suppress_output.py pip wheel --no-build-isolation .
 #        pip install --no-cache-dir scipy*.whl
-
 #        python -u runtests.py -g -j2 -m fast --no-build -- -rfEX --durations=10
-
-        # print statistics for ccache
+#        print statistics for ccache
         ccache -s
