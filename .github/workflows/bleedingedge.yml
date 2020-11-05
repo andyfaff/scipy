@@ -10,7 +10,7 @@ on:
 jobs:
   test_nightly:
 
-    if: "github.repository == 'scipy/scipy' && !contains(github.event.head_commit.message, '[ci skip]') && !contains(github.event.head_commit.message, '[skip ci]') && !contains(github.event.head_commit.message, '[skip github]')"
+#    if: "github.repository == 'scipy/scipy' && !contains(github.event.head_commit.message, '[ci skip]') && !contains(github.event.head_commit.message, '[skip ci]') && !contains(github.event.head_commit.message, '[skip github]')"
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -18,6 +18,7 @@ jobs:
 
     steps:
     - uses: actions/checkout@v2
+
     - name: Set up Python ${{ matrix.python-version }}
       uses: actions/setup-python@v2
       with:
@@ -34,12 +35,42 @@ jobs:
     - name: Install other build dependencies
       run: |
         python -m pip install --upgrade pip setuptools
-        sudo apt-get install libatlas-base-dev liblapack-dev gfortran libgmp-dev libmpfr-dev libsuitesparse-dev ccache libmpc-dev
+        sudo apt-get install -y --no-install-recommends libatlas-base-dev liblapack-dev gfortran libgmp-dev libmpfr-dev libsuitesparse-dev ccache libmpc-dev
+
+    - name: Prepare ccache timestamp
+      id: ccache_cache_timestamp
+      shell: cmake -P {0}
+      run: |
+        string(TIMESTAMP current_date "%Y-%m-%d-%H;%M;%S" UTC)
+        message("::set-output name=timestamp::${current_date}")
+
+    - name: ccache cache files
+      uses: actions/cache@v1.1.0
+      with:
+        path: .ccache
+        key: scipy-ccache-${{ steps.ccache_cache_timestamp.outputs.timestamp }}
+        restore-keys: |
+          scipy-ccache-
+      run: |
+        # Update symlinks
+        sudo /usr/sbin/update-ccache-symlinks
+        # Prepend ccache into the PATH
+        echo 'export PATH="/usr/lib/ccache:$PATH"' | tee -a ~/.bashrc
+        # Source bashrc to test the new PATH
+        source ~/.bashrc && echo $PATH
 
     - name: Install packages
       run: |
         python -m pip install --user numpy setuptools wheel cython pytest pytest-xdist pybind11 pytest-xdist
 
     - name: Test SciPy
+      env:
+        CCACHE_DIR: $GITHUB_WORKSPACE/.ccache
+        CCACHE_COMPRESS: "true"
+        CCACHE_COMPRESSLEVEL: "6"
+        CCACHE_MAXSIZE: "400M"
       run: |
         python -u runtests.py -m fast
+
+        # print statistics for ccache
+        ccache -s
