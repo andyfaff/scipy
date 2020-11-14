@@ -40,7 +40,10 @@ matrix:
         - pycodestyle scipy benchmarks/benchmarks
         - |
           if [ "$TRAVIS_PULL_REQUEST" != "false" ]; then
-             python tools/lint_diff.py --branch $TRAVIS_BRANCH
+             git fetch --unshallow
+             git config remote.origin.fetch "+refs/heads/maintenance/*:refs/remotes/origin/maintenance/*"
+             git fetch origin --no-tags
+             python tools/lint_diff.py --branch origin/$TRAVIS_BRANCH
           fi
         - tools/unicode-check.py
     - python: 3.7
@@ -274,9 +277,10 @@ script:
     if [ "${TRAVIS_PULL_REQUEST}" != "false" ] && [ "${REFGUIDE_CHECK}" == "1" ]; then
       python runtests.py -g --refguide-check
     fi
+  # pyfftw missing should raise an error when running benchmarks with SCIPY_ALLOW_BENCH_IMPORT_ERRORS=0
   - |
     if [ "${TRAVIS_PULL_REQUEST}" != "false" ] && [ "${ASV_CHECK}" == "1" ]; then
-      (cd benchmarks && python -masv check -E existing)
+      (cd benchmarks && python -masv check -E existing && ! SCIPY_ALLOW_BENCH_IMPORT_ERRORS=0 python -masv check -E existing > /dev/null)
     fi
   # Check dynamic symbol hiding works on Linux
   - |

@@ -135,6 +135,12 @@ class ScalarFunction(object):
         self._update_fun_impl = update_fun
         self._update_fun()
 
+        try:
+            _ = float(np.asarray(self.f))
+        except (TypeError, ValueError) as e:
+            raise ValueError("The user-provided objective function must"
+                             " return a scalar value.") from e
+
         # Gradient evaluation
         if callable(grad):
             def grad_wrapped(x):
