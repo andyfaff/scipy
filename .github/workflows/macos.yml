@@ -68,8 +68,8 @@ jobs:
 
         # Modify the openblas dylib so it can be used in its current location
         # Also make it use the current install location for libgfortran, libquadmath, and libgcc_s.
-        #        pushd openblas/lib
-        #        install_name_tool -id $PWD/libopenblasp-r*.dylib libopenblas.dylib
+        pushd openblas/lib
+        install_name_tool -id $PWD/libopenblasp-r*.dylib libopenblas.dylib
         #        install_name_tool -change /usr/local/gfortran/lib/libgfortran.3.dylib /usr/local/Cellar/gcc@6/6.5.0_5/lib/gcc/6/libgfortran.3.dylib libopenblas.dylib
         #        install_name_tool -change /usr/local/gfortran/lib/libquadmath.0.dylib /usr/local/Cellar/gcc@6/6.5.0_5/lib/gcc/6/libquadmath.0.dylib libopenblas.dylib
         #        install_name_tool -change /usr/local/gfortran/lib/libgcc_s.1.dylib /usr/local/Cellar/gcc@6/6.5.0_5/lib/gcc/6/libgcc_s.1.dylib libopenblas.dylib
