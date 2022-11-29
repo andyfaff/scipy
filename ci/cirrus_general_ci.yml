@@ -39,65 +39,65 @@ linux_aarch64_test_task:
     python dev.py test
 
 
-musllinux_amd64_test_task:
-  container:
-    image: alpine
-    cpu: 8
-    memory: 32G
-
-  env:
-    PATH: $PWD:$PATH
-
-  setup_script: |
-    apk update
-    apk add openblas-dev python3 python3-dev openblas build-base gfortran git py3-pip
-    git submodule update --init
-
-    ln -sf $(which python3.10) python
-
-  pip_cache:
-    folder: ~/.cache/pip
-
-  python_dependencies_script: |
-      python -m pip install cython
-      python -m pip install -vvv --upgrade numpy    
-      python -m pip install meson ninja pybind11 pythran pytest
-      python -m pip install click rich_click doit pydevtool pooch
-
-      # pin setuptools to get around https://github.com/scipy/scipy/issues/17475
-      python -m pip install "setuptools<65.6.0"
-
-  build_script: |
-    python dev.py build
-
-  test_script: |
-    set -xe -o
-    python dev.py test
-
-
-macos_arm64_test_task:
-  macos_instance:
-    image: ghcr.io/cirruslabs/macos-monterey-xcode:13.3.1
-  test_script: |
-    git submodule update --init
-    brew install python@3.10
-
-    export PATH=/opt/homebrew/opt/python@3.10/libexec/bin:$PATH
-    python --version
-
-    # used for installing OpenBLAS/gfortran
-    bash tools/wheels/cibw_before_build_macos.sh $PWD
-
-    export PKG_CONFIG_PATH=/opt/arm64-builds/lib/pkgconfig
-    export CMAKE_PREFIX_PATH=/opt/arm64-builds/
-
-    pushd ~/
-    python -m venv scipy-dev
-    source scipy-dev/bin/activate
-    popd
-
-    python -m pip install meson ninja numpy cython pybind11 pythran cython
-    python -m pip install click rich_click doit pydevtool
-    python -m pip install pytest pooch
-    export DYLD_LIBRARY_PATH=/usr/local/gfortran/lib:/opt/arm64-builds/lib
-    python dev.py test
+#musllinux_amd64_test_task:
+#  container:
+#    image: alpine
+#    cpu: 8
+#    memory: 32G
+#
+#  env:
+#    PATH: $PWD:$PATH
+#
+#  setup_script: |
+#    apk update
+#    apk add openblas-dev python3 python3-dev openblas build-base gfortran git py3-pip
+#    git submodule update --init
+#
+#    ln -sf $(which python3.10) python
+#
+#  pip_cache:
+#    folder: ~/.cache/pip
+#
+#  python_dependencies_script: |
+#      python -m pip install cython
+#      python -m pip install -vvv --upgrade numpy
+#      python -m pip install meson ninja pybind11 pythran pytest
+#      python -m pip install click rich_click doit pydevtool pooch
+#
+#      # pin setuptools to get around https://github.com/scipy/scipy/issues/17475
+#      python -m pip install "setuptools<65.6.0"
+#
+#  build_script: |
+#    python dev.py build
+#
+#  test_script: |
+#    set -xe -o
+#    python dev.py test
+#
+#
+#macos_arm64_test_task:
+#  macos_instance:
+#    image: ghcr.io/cirruslabs/macos-monterey-xcode:13.3.1
+#  test_script: |
+#    git submodule update --init
+#    brew install python@3.10
+#
+#    export PATH=/opt/homebrew/opt/python@3.10/libexec/bin:$PATH
+#    python --version
+#
+#    # used for installing OpenBLAS/gfortran
+#    bash tools/wheels/cibw_before_build_macos.sh $PWD
+#
+#    export PKG_CONFIG_PATH=/opt/arm64-builds/lib/pkgconfig
+#    export CMAKE_PREFIX_PATH=/opt/arm64-builds/
+#
+#    pushd ~/
+#    python -m venv scipy-dev
+#    source scipy-dev/bin/activate
+#    popd
+#
+#    python -m pip install meson ninja numpy cython pybind11 pythran cython
+#    python -m pip install click rich_click doit pydevtool
+#    python -m pip install pytest pooch
+#    export DYLD_LIBRARY_PATH=/usr/local/gfortran/lib:/opt/arm64-builds/lib
+#    python dev.py test
