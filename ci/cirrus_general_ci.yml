@@ -15,6 +15,7 @@ linux_aarch64_test_task:
   test_script: |
     git submodule update --init
     apt-get update
+    printenv
     apt-get install -y --no-install-recommends software-properties-common gcc g++ gfortran pkg-config
     apt-get install -y --no-install-recommends libopenblas-dev libatlas-base-dev liblapack-dev
 
