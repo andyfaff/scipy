@@ -105,15 +105,17 @@ jobs:
           submodules: true
           fetch-depth: 0
 
-      - uses: actions/setup-python@v4.2.0
+      - uses: actions/setup-python@v4.5.0
         with:
-          python-version: 3.9
+          python-version: 3.11
 
       - name: win_amd64 - install rtools
         run: |
           # mingw-w64
-          choco install rtools --no-progress
-          echo "c:\rtools40\ucrt64\bin;" >> $env:GITHUB_PATH
+          choco install mingw --no-progress
+          # echo "c:\rtools40\ucrt64\bin;" >> $env:GITHUB_PATH
+          echo "C:\ProgramData\chocolatey\lib\mingw\tools\install\mingw64\bin;" >> $env:GITHUB_PATH
+
         if: ${{ runner.os == 'Windows' && env.IS_32_BIT == 'false' }}
 
 #      - name: win32 - configure mingw for 32-bit builds
