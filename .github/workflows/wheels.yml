@@ -112,7 +112,8 @@ jobs:
       - name: win_amd64 - install rtools
         run: |
           # mingw-w64
-          choco install --upgrade mingw rtools --no-progress
+          choco install rtools --no-progress
+          choco install mingw --no-progress --force --version=12.2.0
           # echo "c:\rtools40\ucrt64\bin;" >> $env:GITHUB_PATH
           echo "C:\ProgramData\chocolatey\lib\mingw\tools\install\mingw64\bin;c:\rtools40\ucrt64\bin" >> $env:GITHUB_PATH
 
@@ -160,7 +161,7 @@ jobs:
             MACOS_DEPLOYMENT_TARGET=10.9
             _PYTHON_HOST_PLATFORM=macosx-10.9-x86_64
           CIBW_ENVIRONMENT_WINDOWS: >
-            CC=C:/ProgramData/chocolatey/lib/mingw/tools/install/mingw64/bin/x86_64-w64-mingw32-gcc-12.2.0.exe
+            CC=C:/ProgramData/chocolatey/lib/mingw/tools/install/mingw64/bin/x86_64-w64-mingw32-gcc.exe
             CXX=C:/ProgramData/chocolatey/lib/mingw/tools/install/mingw64/bin/x86_64-w64-mingw32-g++.exe
           CIBW_REPAIR_WHEEL_COMMAND_MACOS: >
             DYLD_LIBRARY_PATH=/usr/local/lib delocate-listdeps {wheel} &&
