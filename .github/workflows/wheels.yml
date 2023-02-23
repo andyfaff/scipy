@@ -112,9 +112,9 @@ jobs:
       - name: win_amd64 - install rtools
         run: |
           # mingw-w64
-          choco install mingw --no-progress
+          choco install mingw rtools --no-progress
           # echo "c:\rtools40\ucrt64\bin;" >> $env:GITHUB_PATH
-          echo "C:\ProgramData\chocolatey\lib\mingw\tools\install\mingw64\bin;" >> $env:GITHUB_PATH
+          echo "C:\ProgramData\chocolatey\lib\mingw\tools\install\mingw64\bin;c:\rtools40\ucrt64\bin" >> $env:GITHUB_PATH
 
         if: ${{ runner.os == 'Windows' && env.IS_32_BIT == 'false' }}
 
