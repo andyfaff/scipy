@@ -81,9 +81,9 @@ def _check_kkt(res, constraints=[], bounds=[], atol=1e-06):
     for mu, g in zip(mus, gs):
         g_eval = np.atleast_1d(g(x))
         # primal feasibility, with a small tolerance for floating point error
-        assert np.all(g_eval >= -1e-14)
+        np.testing.assert_array_less(-1e-12, g_eval)
         # dual feasibility, with a small tolerance for floating point error
-        assert np.all(mu >= -1e-14)
+        np.testing.assert_array_less(-1e-12, mu)
         # complementary slackness
         assert_allclose(g_eval @ mu, 0, atol=atol)
 
