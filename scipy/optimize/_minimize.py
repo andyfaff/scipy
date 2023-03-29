@@ -542,7 +542,7 @@ def minimize(fun, x0, args=(), method=None, jac=None, hess=None,
     tighten the constraint by a small amount ``eps``:
 
     >>> eps = 0.01
-    ... cons[0]['fun'] = lambda x: x[0] - 2 * x[1] + 2 - eps
+    >>> cons[0]['fun'] = lambda x: x[0] - 2 * x[1] + 2 - eps
 
     we expect the optimal value of the objective function to increase by
     approximately ``eps * res.kkt['ineq'][0]``:
@@ -550,10 +550,10 @@ def minimize(fun, x0, args=(), method=None, jac=None, hess=None,
     >>> eps * res.kkt['ineq'][0] # Expected change in f0
     array([0.008])
     >>> f0 = res.fun # Keep track of the previous optimal value
-    ... res = minimize(fun, (2, 0), method='SLSQP', bounds=bnds,
+    >>> res = minimize(fun, (2, 0), method='SLSQP', bounds=bnds,
     ...                constraints=cons)
-    ... f1 = res.fun # New optimal value
-    ... f1 - f0
+    >>> f1 = res.fun # New optimal value
+    >>> f1 - f0
     0.008019998807906381
     """
     x0 = np.atleast_1d(np.asarray(x0))
