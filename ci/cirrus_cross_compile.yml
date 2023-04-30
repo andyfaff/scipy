@@ -52,7 +52,7 @@ cross_compile_wheel_task:
     export PKG_CONFIG_PATH=/usr/local/lib/pkgconfig:$PKG_CONFIG_PATH
     popd
 
-    export PTH=~/miniconda3
+    export PTH=$HOME/miniconda3
     curl https://repo.anaconda.com/miniconda/Miniconda3-py310_23.3.1-0-Linux-x86_64.sh -o conda.sh
     
     bash conda.sh -b -u -p $PTH
