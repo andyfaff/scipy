@@ -1,0 +1,106 @@
+# a cross-compile task
+
+modified_clone: &MODIFIED_CLONE
+  # makes sure that for a PR the CI runs against a merged main
+  clone_script: |
+    if [ -z "$CIRRUS_PR" ]; then
+      # if you're not in a PR then clone against the branch name that was pushed to.
+      git clone --recursive --branch=$CIRRUS_BRANCH https://x-access-token:${CIRRUS_REPO_CLONE_TOKEN}@github.com/${CIRRUS_REPO_FULL_NAME}.git $CIRRUS_WORKING_DIR
+      git reset --hard $CIRRUS_CHANGE_IN_REPO
+    else
+      # it's a PR so clone the main branch then merge the changes from the PR
+      git clone https://x-access-token:${CIRRUS_REPO_CLONE_TOKEN}@github.com/${CIRRUS_REPO_FULL_NAME}.git $CIRRUS_WORKING_DIR
+      git fetch origin pull/$CIRRUS_PR/head:pull/$CIRRUS_PR
+    
+      # CIRRUS_BASE_BRANCH will probably be `main` for the majority of the time
+      # However, if you do a PR against a maintenance branch we will want to
+      # merge the PR into the maintenance branch, not main
+      git checkout $CIRRUS_BASE_BRANCH
+
+      # alpine git package needs default user.name and user.email to be set before a merge
+      git -c user.email="you@example.com" merge --no-commit pull/$CIRRUS_PR
+      git submodule update --init --recursive
+    fi
+
+
+cross_compile_wheel_task:
+  compute_engine_instance:
+    image_project: cirrus-images
+    image: family/docker-builder
+    platform: linux
+    cpu: 4
+    memory: 16G
+
+  <<: *MODIFIED_CLONE
+
+  crosswheels_artifacts:
+    path: "dist/*"
+
+  pip_cache:
+    folder: ~/.cache/pip
+
+  test_script: |
+    apt-get update
+
+    apt-get install -y --no-install-recommends software-properties-common pkg-config
+    # apt-get install -y --no-install-recommends gcc-aarch64-linux-gnu binutils-aarch64-linux-gnu gfortran-aarch64-linux-gnu
+    
+    # When this task was written the linux image used ubuntu:jammy, for which
+    # python3.10 is the default. If required different versions can be
+    # installed using the deadsnakes apt repository.
+    # add-apt-repository -y ppa:deadsnakes/ppa
+    # apt-get update
+    # DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends tzdata
+
+    apt-get install -y python3.10 python3.10-venv python3.10-pip
+    # python3.10 -m ensurepip --default-pip --user
+
+    ln -s $(which python3.10) python
+    export PATH=$PWD:$PATH
+
+    #    pushd tools
+    #    python3 -c "import openblas_support as obs;obs.download_openblas('openblas.tar.gz', 'linux-aarch64', None)"
+    #    # extracts files to /usr/local/lib, etc.
+    #    tar -zvxf openblas.tar.gz -C /
+    #    popd
+    
+    curl https://repo.anaconda.com/miniconda/Miniconda3-py310_23.3.1-0-Linux-x86_64.sh -o conda.sh
+    bash conda.sh -b -u -p ~/miniconda3
+    source ~/miniconda3/bin/activate
+    conda config --set channel_priority strict
+    conda config --add channels conda-forge
+
+    conda create -n build-env gxx_linux-aarch64 gfortran_linux-aarch64 python numpy
+    CONDA_SUBDIR=linux-aarch64 conda create -n host-env python numpy openblas libstdcxx-ng libgfortran-ng
+    export PREFIX=/path/to/host-env
+    export BUILD_PREFIX=/path/to/build-env
+    export CONDA_BUILD=1
+    conda activate build-env
+
+
+test_cross_compiled_wheel_task:
+  # which bash, etc, may not be present.
+  depends_on:
+    - cross_compile_wheel_task
+
+  compute_engine_instance:
+    image_project: cirrus-images
+    image: family/docker-builder-arm64
+    architecture: arm64
+    platform: linux
+    cpu: 4
+    memory: 16G
+
+  test_script: |
+    apt-get install -y python3.10 python3.10-venv
+    # python3.10 -m ensurepip --default-pip --user    
+        
+    ln -s $(which python3.10) python
+    export PATH=$PWD:$PATH
+
+    python -m pip install numpy pytest pooch
+
+    curl https://api.cirrus-ci.com/v1/artifact/build/$CIRRUS_BUILD_ID/crosswheels.zip --output wheels.zip
+    unzip wheels.zip
+    ls -al
+    python -m pip install scipy
