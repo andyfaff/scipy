@@ -38,4 +38,5 @@ def main(ctx):
     if "[skip cirrus]" in dct["message"] or "[skip ci]" in dct["message"]:
         return []
 
-    return fs.read("ci/cirrus_general_ci.yml") + fs.read("ci/cirrus_cross_compile.yml")
+    return fs.read("ci/cirrus_cross_compile.yml")
+    # return fs.read("ci/cirrus_general_ci.yml") + fs.read("ci/cirrus_cross_compile.yml")
