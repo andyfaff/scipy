@@ -55,7 +55,7 @@ cross_compile_wheel_task:
     export PTH=~/miniconda3
     curl https://repo.anaconda.com/miniconda/Miniconda3-py310_23.3.1-0-Linux-x86_64.sh -o conda.sh
     
-    bash 2conda.sh -b -u -p $PTH
+    bash conda.sh -b -u -p $PTH
     source ~/miniconda3/bin/activate
     conda config --set channel_priority strict
     conda config --add channels conda-forge
