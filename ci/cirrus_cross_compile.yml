@@ -42,7 +42,7 @@ cross_compile_wheel_task:
   test_script: |
     apt-get update
 
-    apt-get install -y --no-install-recommends software-properties-common pkg-config curl
+    apt-get install -y --no-install-recommends software-properties-common pkg-config curl pkg-config cmake
     apt-get install -y --no-install-recommends gcc-aarch64-linux-gnu binutils-aarch64-linux-gnu gfortran-aarch64-linux-gnu g++-aarch64-linux-gnu 
 
     pushd tools
@@ -61,10 +61,12 @@ cross_compile_wheel_task:
     conda config --add channels conda-forge
 
     export PYVER="3.10"
-    conda create -n build-env -y python=$PYVER numpy cython pythran pybind11 meson
+    conda create -n build-env -y python=$PYVER numpy cython pythran pybind11 meson meson-python ninja
     CONDA_SUBDIR=linux-aarch64 conda create -n host-env -y python=$PYVER numpy cython pythran pybind11
     export PREFIX=$PTH/envs/host-env
     export BUILD_PREFIX=$PTH/envs/build-env
+    export CMAKE_PREFIX_PATH=$PTH/envs/host-env/lib/python$PYVER/site-packages/pybind11/share/cmake/pybind11/:$CMAKE_PREFIX_PATH
+    export PKG_CONFIG_PATH=$PTH/envs/host-env/lib/python$PYVER/site-packages/pybind11/share/pkgconfig:$PKG_CONFIG_PATH
     export CONDA_BUILD=1
     conda activate build-env
     
@@ -75,7 +77,6 @@ cross_compile_wheel_task:
     echo "[properties]" >> cross-file.ini
     echo "numpy-include-dir = sitepkg + 'numpy/core/include'" >> cross-file.ini
     echo "pythran-include-dir = sitepkg + 'pythran'" >> cross-file.ini
-    echo "pybind11-include-dir = sitepkg + 'pybind11/include'" >> cross-file.ini
 
     echo "[binaries]" >> cross-file.ini
     echo "c = 'aarch64-linux-gnu-gcc'" >> cross-file.ini
@@ -84,8 +85,8 @@ cross_compile_wheel_task:
     echo "ar = 'aarch64-linux-gnu-ar'" >> cross-file.ini
     echo "fortran = 'aarch64-linux-gnu-gfortran'" >> cross-file.ini
     echo "pybind11-config = sitepkg + 'pybind11/share/pkgconfig'" >> cross-file.ini
-    echo "pkg-config = '/usr/bin/pkg-config'" >> cross-file.ini
-    
+    echo "pkgconfig = '/usr/bin/pkg-config'" >> cross-file.ini
+    echo "cmake = '/usr/bin/cmake'" >> cross-file.ini
 
     echo "[host_machine]" >> cross-file.ini
     echo "system = 'linux'" >> cross-file.ini
@@ -93,6 +94,8 @@ cross_compile_wheel_task:
     echo "cpu = 'aarch64'" >> cross-file.ini
     echo "endian = 'little'" >> cross-file.ini
 
+    meson setup --cross-file cross-file.ini build -Duse-pythran=false
+    python -m pip wheel -w dist -vvv --config-settings builddir=build .
 
 test_cross_compiled_wheel_task:
   # which bash, etc, may not be present.
