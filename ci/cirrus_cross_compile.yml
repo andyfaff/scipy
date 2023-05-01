@@ -59,8 +59,12 @@ cross_compile_wheel_task:
     conda config --add channels conda-forge
 
     export PYVER="3.10"
-    conda create -n build-env -y python=$PYVER numpy cython pythran pybind11 meson meson-python ninja
-    CONDA_SUBDIR=linux-aarch64 conda create -n host-env -y python=$PYVER numpy cython pythran pybind11
+    conda create -n build-env -y python=$PYVER
+    conda activate build-env
+    conda install -y -q  numpy cython pythran pybind11 meson meson-python ninja
+    conda deactivate
+
+    CONDA_SUBDIR=linux-aarch64 conda create -n host-env -y -q python=$PYVER numpy cython pythran pybind11
     export PREFIX=$PTH/envs/host-env
     export BUILD_PREFIX=$PTH/envs/build-env
     export CMAKE_PREFIX_PATH=$PTH/envs/host-env/lib/python$PYVER/site-packages/pybind11/share/cmake/pybind11/:$CMAKE_PREFIX_PATH
