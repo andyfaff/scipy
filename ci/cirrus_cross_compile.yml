@@ -52,11 +52,11 @@ cross_compile_wheel_task:
     export PKG_CONFIG_PATH=/usr/local/lib/pkgconfig:$PKG_CONFIG_PATH
     popd
 
-    export PTH=$HOME/miniconda3
+    export PTH=$CIRRUS_VOLUME/miniconda3
     curl https://repo.anaconda.com/miniconda/Miniconda3-py310_23.3.1-0-Linux-x86_64.sh -o conda.sh
     
     bash conda.sh -b -u -p $PTH
-    source ~/miniconda3/bin/activate
+    source $PTH/bin/activate
     conda config --set channel_priority strict
     conda config --add channels conda-forge
 
