@@ -60,6 +60,8 @@ cross_compile_wheel_task:
 
     export PYVER="3.10"
     conda create -n build-env -y python=$PYVER
+    source $PTH/envs/build-env/bin/activate
+
     conda activate build-env
     conda install -y -q  numpy cython pythran pybind11 meson meson-python ninja
     conda deactivate
@@ -70,8 +72,9 @@ cross_compile_wheel_task:
     export CMAKE_PREFIX_PATH=$PTH/envs/host-env/lib/python$PYVER/site-packages/pybind11/share/cmake/pybind11/:$CMAKE_PREFIX_PATH
     export PKG_CONFIG_PATH=$PTH/envs/host-env/lib/python$PYVER/site-packages/pybind11/share/pkgconfig:$PKG_CONFIG_PATH
     export CONDA_BUILD=1
+    source $PTH/envs/build-env/bin/activate
     conda activate build-env
-    
+
     # setup cross file
     echo "[constants]" > cross-file.ini
     echo "sitepkg = '$PREFIX/lib/python$PYVER/site-packages/'" >> cross-file.ini
