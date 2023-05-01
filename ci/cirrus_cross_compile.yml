@@ -33,9 +33,6 @@ cross_compile_wheel_task:
 
   <<: *MODIFIED_CLONE
 
-  crosswheels_artifacts:
-    path: "dist/*"
-
   pip_cache:
     folder: ~/.cache/pip
 
@@ -53,6 +50,7 @@ cross_compile_wheel_task:
     popd
 
     export PTH=$CIRRUS_VOLUME/miniconda3
+    export HOME=$CIRRUS_VOLUME
     curl https://repo.anaconda.com/miniconda/Miniconda3-py310_23.3.1-0-Linux-x86_64.sh -o conda.sh
     
     bash conda.sh -b -u -p $PTH
@@ -96,6 +94,10 @@ cross_compile_wheel_task:
 
     meson setup --cross-file cross-file.ini build -Duse-pythran=false
     python -m pip wheel -w dist -vvv --config-settings builddir=build .
+
+  crosswheels_artifacts:
+    path: "dist/*"
+
 
 test_cross_compiled_wheel_task:
   # which bash, etc, may not be present.
