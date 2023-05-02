@@ -24,12 +24,16 @@ modified_clone: &MODIFIED_CLONE
 
 
 cross_compile_wheel_task:
-  compute_engine_instance:
-    image_project: cirrus-images
-    image: family/docker-builder
-    platform: linux
+  #  compute_engine_instance:
+  #    image_project: cirrus-images
+  #    image: family/docker-builder
+  #    platform: linux
+  #    cpu: 4
+  #    memory: 16G
+  container:
     cpu: 4
     memory: 16G
+    image: ubuntu:jammy
 
   <<: *MODIFIED_CLONE
 
@@ -39,8 +43,8 @@ cross_compile_wheel_task:
   test_script: |
     apt-get update
 
-    apt-get install -y --no-install-recommends software-properties-common pkg-config curl pkg-config cmake
-    apt-get install -y --no-install-recommends gcc-aarch64-linux-gnu binutils-aarch64-linux-gnu gfortran-aarch64-linux-gnu g++-aarch64-linux-gnu 
+    apt-get install -y --no-install-recommends software-properties-common pkg-config curl pkg-config cmake vim git
+    apt-get install -y --no-install-recommends gcc-aarch64-linux-gnu binutils-aarch64-linux-gnu gfortran-aarch64-linux-gnu g++-aarch64-linux-gnu
 
     pushd tools
     python3 -c "import openblas_support as obs;obs.download_openblas('openblas.tar.gz', 'linux-aarch64', None)"
@@ -59,21 +63,16 @@ cross_compile_wheel_task:
 
     export PYVER="3.10"
     conda create -n build-env -y python=$PYVER
-    source $PTH/bin/activate
-    conda activate build-env
 
-    conda activate build-env
-    conda install -y -q  numpy cython pythran pybind11 meson meson-python ninja
-    conda deactivate
-
-    CONDA_SUBDIR=linux-aarch64 conda create -n host-env -y -q python=$PYVER numpy cython pythran pybind11
+    CONDA_SUBDIR=linux-aarch64 conda create -n host-env -y -q python=$PYVER numpy cython pybind11
     export PREFIX=$PTH/envs/host-env
     export BUILD_PREFIX=$PTH/envs/build-env
     export CMAKE_PREFIX_PATH=$PTH/envs/host-env/lib/python$PYVER/site-packages/pybind11/share/cmake/pybind11/:$CMAKE_PREFIX_PATH
     export PKG_CONFIG_PATH=$PTH/envs/host-env/lib/python$PYVER/site-packages/pybind11/share/pkgconfig:$PKG_CONFIG_PATH
     export CONDA_BUILD=1
-    source $PTH/bin/activate
     conda activate build-env
+
+    pip install numpy cython pybind11 meson meson-python ninja
 
     # setup cross file
     echo "[constants]" > cross-file.ini
@@ -100,7 +99,7 @@ cross_compile_wheel_task:
     echo "endian = 'little'" >> cross-file.ini
 
     meson setup --cross-file cross-file.ini build -Duse-pythran=false
-    python -m pip wheel -w dist -vvv --config-settings builddir=build .
+    python -m pip wheel -w dist -vvv --config-settings builddir=build . --no-build-isolation
 
   crosswheels_artifacts:
     path: "dist/*"
@@ -111,15 +110,21 @@ test_cross_compiled_wheel_task:
   depends_on:
     - cross_compile_wheel
 
-  compute_engine_instance:
-    image_project: cirrus-images
-    image: family/docker-builder-arm64
-    architecture: arm64
-    platform: linux
+  arm_container:
     cpu: 4
     memory: 16G
+    image: ubuntu:jammy
+
+  #  compute_engine_instance:
+  #    image_project: cirrus-images
+  #    image: family/docker-builder-arm64
+  #    architecture: arm64
+  #    platform: linux
+  #    cpu: 4
+  #    memory: 16G
 
   test_script: |
+    apt-get update
     apt-get install -y python3.10 python3.10-venv
     # python3.10 -m ensurepip --default-pip --user    
         
