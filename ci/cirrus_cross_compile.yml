@@ -50,17 +50,17 @@ cross_compile_wheel_task:
     popd
 
     export PTH=$CIRRUS_VOLUME/miniconda3
-    export HOME=$CIRRUS_VOLUME
     curl https://repo.anaconda.com/miniconda/Miniconda3-py310_23.3.1-0-Linux-x86_64.sh -o conda.sh
     
-    bash conda.sh -b -u -p $PTH
+    HOME=$CIRRUS_VOLUME bash conda.sh -b -u -p $PTH
     source $PTH/bin/activate
     conda config --set channel_priority strict
     conda config --add channels conda-forge
 
     export PYVER="3.10"
     conda create -n build-env -y python=$PYVER
-    source $PTH/envs/build-env/bin/activate
+    source $PTH/bin/activate
+    conda activate build-env
 
     conda activate build-env
     conda install -y -q  numpy cython pythran pybind11 meson meson-python ninja
@@ -72,7 +72,7 @@ cross_compile_wheel_task:
     export CMAKE_PREFIX_PATH=$PTH/envs/host-env/lib/python$PYVER/site-packages/pybind11/share/cmake/pybind11/:$CMAKE_PREFIX_PATH
     export PKG_CONFIG_PATH=$PTH/envs/host-env/lib/python$PYVER/site-packages/pybind11/share/pkgconfig:$PKG_CONFIG_PATH
     export CONDA_BUILD=1
-    source $PTH/envs/build-env/bin/activate
+    source $PTH/bin/activate
     conda activate build-env
 
     # setup cross file
