@@ -78,6 +78,12 @@ cross_compile_wheel_task:
     echo "numpy-include-dir = sitepkg + 'numpy/core/include'" >> cross-file.ini
     echo "pythran-include-dir = sitepkg + 'pythran'" >> cross-file.ini
 
+    echo "[host_machine]" >> cross-file.ini
+    echo "system = 'linux'" >> cross-file.ini
+    echo "cpu_family = 'aarch64'" >> cross-file.ini
+    echo "cpu = 'aarch64'" >> cross-file.ini
+    echo "endian = 'little'" >> cross-file.ini
+
     echo "[binaries]" >> cross-file.ini
     echo "c = 'aarch64-linux-gnu-gcc'" >> cross-file.ini
     echo "cpp = 'aarch64-linux-gnu-g++'" >> cross-file.ini
@@ -87,12 +93,7 @@ cross_compile_wheel_task:
     echo "pybind11-config = sitepkg + 'pybind11/share/pkgconfig'" >> cross-file.ini
     echo "pkgconfig = '/usr/bin/pkg-config'" >> cross-file.ini
     echo "cmake = '/usr/bin/cmake'" >> cross-file.ini
-
-    echo "[host_machine]" >> cross-file.ini
-    echo "system = 'linux'" >> cross-file.ini
-    echo "cpu_family = 'aarch64'" >> cross-file.ini
-    echo "cpu = 'aarch64'" >> cross-file.ini
-    echo "endian = 'little'" >> cross-file.ini
+    # echo "python = '$PREFIX/bin/python$PYVER'" >> cross-file.ini
 
     # needed so the wheel is named correctly
     export CROSS_COMPILE=1
