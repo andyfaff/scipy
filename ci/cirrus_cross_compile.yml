@@ -3,6 +3,8 @@
 modified_clone: &MODIFIED_CLONE
   # makes sure that for a PR the CI runs against a merged main
   clone_script: |
+    apt update
+    apt install git
     if [ -z "$CIRRUS_PR" ]; then
       # if you're not in a PR then clone against the branch name that was pushed to.
       git clone --recursive --branch=$CIRRUS_BRANCH https://x-access-token:${CIRRUS_REPO_CLONE_TOKEN}@github.com/${CIRRUS_REPO_FULL_NAME}.git $CIRRUS_WORKING_DIR
