@@ -70,6 +70,10 @@ cross_compile_wheel_task:
 
     pip install numpy cython pybind11 meson meson-python ninja
 
+    # setup native file
+    echo "[binaries]" > native-file.ini
+    echo "python = '$BUILD_PREFIX/bin/python$PYVER'" >> native-file.ini
+    
     # setup cross file
     echo "[constants]" > cross-file.ini
     echo "sitepkg = '$PREFIX/lib/python$PYVER/site-packages/'" >> cross-file.ini
@@ -95,11 +99,10 @@ cross_compile_wheel_task:
     echo "cmake = '/usr/bin/cmake'" >> cross-file.ini
     # echo "python = '$PREFIX/bin/python$PYVER'" >> cross-file.ini
 
-    # needed so the wheel is named correctly
     export CROSS_COMPILE=1
     export _PYTHON_HOST_PLATFORM='linux_aarch64'
 
-    meson setup --cross-file cross-file.ini build -Duse-pythran=false
+    meson setup --cross-file cross-file.ini --native-file native-file.ini build -Duse-pythran=false
     python -m pip wheel -w dist -vvv --config-settings builddir=build . --no-build-isolation
 
   crosswheels_artifacts:
