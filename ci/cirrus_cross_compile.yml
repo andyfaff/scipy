@@ -1,6 +1,6 @@
 # a cross-compile task
 
-modified_clone: &MODIFIED_CLONE
+  #modified_clone: &MODIFIED_CLONE
   # makes sure that for a PR the CI runs against a merged main
   #  clone_script: |
   #    apt update
@@ -37,7 +37,7 @@ cross_compile_wheel_task:
     memory: 16G
     image: ubuntu:jammy
 
-  <<: *MODIFIED_CLONE
+  # <<: *MODIFIED_CLONE
 
   pip_cache:
     folder: ~/.cache/pip
