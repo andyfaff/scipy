@@ -61,7 +61,7 @@ linux_aarch64_test_task:
     python -m pip install meson ninja numpy cython pybind11 pythran cython
     python -m pip install click rich_click doit pydevtool
     python -m pip install pytest pooch
-    python -m pip cache dir
+    echo $(python -m pip cache dir)
     python dev.py test
 
 
