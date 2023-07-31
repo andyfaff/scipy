@@ -38,7 +38,7 @@ linux_aarch64_test_task:
   <<: *MODIFIED_CLONE
 
   pip_cache:
-    folder: ~/.cache/pip
+    folder: /root/.cache/pip
 
   test_script: |
     apt-get update
@@ -94,5 +94,6 @@ macos_arm64_test_task:
     python -m pip install meson ninja numpy cython pybind11 pythran cython
     python -m pip install click rich_click doit pydevtool
     python -m pip install pytest pooch
+    echo $(python -m pip cache dir)
     export DYLD_LIBRARY_PATH=/usr/local/gfortran/lib:/opt/arm64-builds/lib
     python dev.py test
