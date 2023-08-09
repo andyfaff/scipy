@@ -135,7 +135,7 @@ class DCSRCH:
     Argonne National Laboratory and University of Minnesota.
     Brett M. Averick, Richard G. Carter, and Jorge J. More'.
     """
-    def __init__(self):
+    def __init__(self, ftol, gtol, xtol, stpmin, stpmax):
         self.stage = None
         self.ginit = None
         self.gtest = None
@@ -151,32 +151,40 @@ class DCSRCH:
         self.width = None
         self.width1 = None
 
-    def __call__(self, stp, f, g, ftol, gtol, xtol, task, stpmin, stpmax):
+        # leave all assessment of tolerances/limits to the first call of
+        # this object
+        self.ftol = ftol
+        self.gtol = gtol
+        self.xtol = xtol
+        self.stpmin = stpmin
+        self.stpmax = stpmax
+
+    def __call__(self, stp, f, g, task):
         p5 = 0.5
         p66 = 0.66
         xtrapl = 1.1
         xtrapu = 4.0
 
-        if task.startswith("START"):
-            if stp < stpmin:
-                task = 'ERROR: STP .LT. STPMIN'
-            if stp > stpmax:
-                task = 'ERROR: STP .GT. STPMAX'
+        if task[:5] == b"START":
+            if stp < self.stpmin:
+                task = b"ERROR: STP .LT. STPMIN"
+            if stp > self.stpmax:
+                task = b"ERROR: STP .GT. STPMAX"
             if g >= 0:
-                task = 'ERROR: INITIAL G .GE. ZERO'
-            if ftol < 0:
-                task = 'ERROR: FTOL .LT. ZERO'
-            if gtol < 0:
-                task = 'ERROR: GTOL .LT. ZERO'
-            if xtol < 0:
-                task = 'ERROR: XTOL .LT. ZERO'
-            if stpmin < 0:
-                task = 'ERROR: STPMIN .LT. ZERO'
-            if stpmax < stpmin:
-                task = 'ERROR: STPMAX .LT. STPMIN'
+                task = b"ERROR: INITIAL G .GE. ZERO"
+            if self.ftol < 0:
+                task = b"ERROR: FTOL .LT. ZERO"
+            if self.gtol < 0:
+                task = b"ERROR: GTOL .LT. ZERO"
+            if self.xtol < 0:
+                task = b"ERROR: XTOL .LT. ZERO"
+            if self.stpmin < 0:
+                task = b"ERROR: STPMIN .LT. ZERO"
+            if self.stpmax < self.stpmin:
+                task = b"ERROR: STPMAX .LT. STPMIN"
 
-            if task.startswith("ERROR"):
-                return
+            if task[:5] == b"ERROR":
+                return stp, f, g, task
 
             # Initialize local variables.
 
@@ -184,8 +192,8 @@ class DCSRCH:
             self.stage = 1
             self.finit = f
             self.ginit = g
-            self.gtest = ftol * self.ginit
-            self.width = stpmax - stpmin
+            self.gtest = self.ftol * self.ginit
+            self.width = self.stpmax - self.stpmin
             self.width1 = self.width / p5
 
             # The variables stx, fx, gx contain the values of the step,
@@ -202,8 +210,8 @@ class DCSRCH:
             self.fy = self.finit
             self.gy = self.ginit
             self.stmin = 0
-            self.stmax = stp + xtrapu*stp
-            task = 'FG'
+            self.stmax = stp + xtrapu * stp
+            task = b"FG"
             return stp, f, g, task
 
         else:
@@ -218,20 +226,20 @@ class DCSRCH:
 
         # test for warnings
         if self.brackt and (stp <= self.stmin or stp >= self.stmax):
-            task = 'WARNING: ROUNDING ERRORS PREVENT PROGRESS'
-        if self.brackt and self.stmax - self.stmin <= xtol * self.stmax:
-            task = 'WARNING: XTOL TEST SATISFIED'
-        if stp == stpmax and f <= ftest and g <= self.gtest:
-            task = 'WARNING: STP = STPMAX'
-        if stp == stpmin and (f > ftest or g >= self.gtest):
-            task = 'WARNING: STP = STPMIN'
+            task = b"WARNING: ROUNDING ERRORS PREVENT PROGRESS"
+        if self.brackt and self.stmax - self.stmin <= self.xtol * self.stmax:
+            task = b"WARNING: XTOL TEST SATISFIED"
+        if stp == self.stpmax and f <= ftest and g <= self.gtest:
+            task = b"WARNING: STP = STPMAX"
+        if stp == self.stpmin and (f > ftest or g >= self.gtest):
+            task = b"WARNING: STP = STPMIN"
 
         # test for convergence
-        if f <= ftest and abs(g) <= gtol * -self.ginit:
-            task = 'CONVERGENCE'
+        if f <= ftest and abs(g) <= self.gtol * -self.ginit:
+            task = b"CONVERGENCE"
 
         # test for termination
-        if task.startswith("WARN") or task.startswith("CONV"):
+        if task[:4] == b"WARN" or task[:4] == b"CONV":
             return stp, f, g, task
 
         # A modified function is used to predict the step during the
@@ -247,30 +255,52 @@ class DCSRCH:
             gym = self.gy - self.gtest
 
             # Call dcstep to update stx, sty, and to compute the new step.
-            self.stx, fxm, gxm, self.sty, fym, gym, stp, self.brackt = dcstep(
-                self.stx,
-                fxm,
-                gxm,
-                self.sty,
-                fym,
-                gym,
-                stp,
-                fm,
-                gm,
-                self.brackt,
-                self.stmin,
-                self.stmax
-            )
+            # dcstep can have several operations which can produce NaN
+            # e.g. inf/inf. Filter these out.
+            with np.errstate(invalid="ignore", over="ignore"):
+                tup = dcstep(
+                    self.stx,
+                    fxm,
+                    gxm,
+                    self.sty,
+                    fym,
+                    gym,
+                    stp,
+                    fm,
+                    gm,
+                    self.brackt,
+                    self.stmin,
+                    self.stmax,
+                )
+                self.stx, fxm, gxm, self.sty, fym, gym, stp, self.brackt = tup
 
             # Reset the function and derivative values for f
-            self.fx = fxm + self.stx*self.gtest
-            self.fy = fym + self.sty*self.gtest
+            self.fx = fxm + self.stx * self.gtest
+            self.fy = fym + self.sty * self.gtest
             self.gx = gxm + self.gtest
             self.gy = gym + self.gtest
 
         else:
             # Call dcstep to update stx, sty, and to compute the new step.
-            self.stx, self.fx, self.gx, self.sty, self.fy, self.gy, stp, self.brackt = dcstep(
+            # dcstep can have several operations which can produce NaN
+            # e.g. inf/inf. Filter these out.
+
+            with np.errstate(invalid="ignore", over="ignore"):
+                tup = dcstep(
+                    self.stx,
+                    self.fx,
+                    self.gx,
+                    self.sty,
+                    self.fy,
+                    self.gy,
+                    stp,
+                    f,
+                    g,
+                    self.brackt,
+                    self.stmin,
+                    self.stmax,
+                )
+            (
                 self.stx,
                 self.fx,
                 self.gx,
@@ -278,12 +308,8 @@ class DCSRCH:
                 self.fy,
                 self.gy,
                 stp,
-                f,
-                g,
                 self.brackt,
-                self.stmin,
-                self.stmax
-            )
+            ) = tup
 
         # Decide if a bisection step is needed
         if self.brackt:
@@ -297,22 +323,26 @@ class DCSRCH:
             self.stmin = min(self.stx, self.sty)
             self.stmax = max(self.stx, self.sty)
         else:
-            self.stmin = stp + xtrapl*(stp-self.stx)
-            self.stmax = stp + xtrapu*(stp-self.stx)
+            self.stmin = stp + xtrapl * (stp - self.stx)
+            self.stmax = stp + xtrapu * (stp - self.stx)
 
         # Force the step to be within the bounds stpmax and stpmin.
-        stp = np.clip(stp, stpmin, stpmax)
+        stp = np.clip(stp, self.stpmin, self.stpmax)
 
         # If further progress is not possible, let stp be the best
         # point obtained during the search.
-        if (self.brackt and
-                (stp <= self.stmin or stp >= self.stmax) or
-                (self.brackt and self.stmax-self.stmin <= xtol*self.stmax)
+        if (
+            self.brackt
+            and (stp <= self.stmin or stp >= self.stmax)
+            or (
+                self.brackt
+                and self.stmax - self.stmin <= self.xtol * self.stmax
+            )
         ):
             stp = self.stx
 
         # Obtain another function and derivative
-        task = 'FG'
+        task = b"FG"
         return stp, f, g, task
 
 
@@ -408,7 +438,11 @@ def dcstep(stx, fx, dx, sty, fy, dy, stp, fp, dp, brackt, stpmin, stpmax):
     Brett M. Averick and Jorge J. More'.
 
     """
-    sgnd = dp * (dx / abs(dx))
+    sgn_dp = np.sign(dp)
+    sgn_dx = np.sign(dx)
+
+    # sgnd = dp * (dx / abs(dx))
+    sgnd = sgn_dp * sgn_dx
 
     # First case: A higher function value. The minimum is bracketed.
     # If the cubic step is closer to stx than the quadratic step, the
@@ -481,20 +515,20 @@ def dcstep(stx, fx, dx, sty, fy, dy, stp, fp, dp, brackt, stpmin, stpmax):
             # A minimizer has been bracketed. If the cubic step is
             # closer to stp than the secant step, the cubic step is
             # taken, otherwise the secant step is taken.
-            if abs(stpc-stp) < abs(stpq-stp):
+            if abs(stpc - stp) < abs(stpq - stp):
                 stpf = stpc
             else:
                 stpf = stpq
 
             if stp > stx:
-                stpf = min(stp+0.66*(sty-stp), stpf)
+                stpf = min(stp + 0.66 * (sty - stp), stpf)
             else:
-                stpf = max(stp+0.66*(sty-stp), stpf)
+                stpf = max(stp + 0.66 * (sty - stp), stpf)
         else:
             # A minimizer has not been bracketed. If the cubic step is
             # farther from stp than the secant step, the cubic step is
             # taken, otherwise the secant step is taken.
-            if abs(stpc-stp) > abs(stpq-stp):
+            if abs(stpc - stp) > abs(stpq - stp):
                 stpf = stpc
             else:
                 stpf = stpq

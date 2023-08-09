@@ -14,6 +14,7 @@ Functions
 from warnings import warn
 
 from scipy.optimize import _minpack2 as minpack2
+from ._dcsrch import DCSRCH
 import numpy as np
 
 __all__ = ['LineSearchWarning', 'line_search_wolfe1', 'line_search_wolfe2',
@@ -146,15 +147,25 @@ def scalar_search_wolfe1(phi, derphi, phi0=None, old_phi0=None, derphi0=None,
 
     phi1 = phi0
     derphi1 = derphi0
-    isave = np.zeros((2,), np.intc)
-    dsave = np.zeros((13,), float)
+    # isave = np.zeros((2,), np.intc)
+    # dsave = np.zeros((13,), float)
     task = b'START'
 
     maxiter = 100
+
+    dcsrch = DCSRCH(c1, c2, xtol, amin, amax)
+
     for i in range(maxiter):
-        stp, phi1, derphi1, task = minpack2.dcsrch(alpha1, phi1, derphi1,
-                                                   c1, c2, xtol, task,
-                                                   amin, amax, isave, dsave)
+        stp, phi1, derphi1, task = dcsrch(alpha1, phi1, derphi1, task)
+
+        # stp, _, _, task = minpack2.dcsrch(alpha1, phi1, derphi1,
+        #                                    c1, c2, xtol, task,
+        #                                    amin, amax, isave, dsave)
+
+        if not np.isfinite(stp):
+            stp = None
+            break
+
         if task[:2] == b'FG':
             alpha1 = stp
             phi1 = phi(stp)
