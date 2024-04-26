@@ -124,7 +124,7 @@ jobs:
             echo CIBW_CONFIG_SETTINGS=\"setup-args=-Dblas=accelerate\" >> "$GITHUB_ENV"
           else
             brew update
-            brew install gcc-11
+            brew install gcc@11
             ln -s $(which gfortran-11) gfortran
           fi
           export PATH=$PWD:$PATH
