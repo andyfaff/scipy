@@ -37,7 +37,7 @@ jobs:
   get_commit_message:
     name: Get commit message
     runs-on: ubuntu-latest
-    if: github.repository == 'scipy/scipy'
+    if: github.repository == 'andyfaff/scipy'
     outputs:
       message: ${{ steps.commit_message.outputs.message }}
     steps:
@@ -118,15 +118,19 @@ jobs:
       - name: Setup macOS
         if: startsWith( matrix.buildplat[0], 'macos-' )
         run: |
-          # Use preinstalled gfortran for builds
-          ln -s $(which gfortran-13) gfortran
+          # gfortran first
+          if [[ ${{ matrix.buildplat[3] }} == 'accelerate' ]]; then
+            ln -s $(which gfortran-13) gfortran
+            echo CIBW_CONFIG_SETTINGS=\"setup-args=-Dblas=accelerate\" >> "$GITHUB_ENV"
+          else
+            brew update
+            brew install gcc-11
+            ln -s $(which gfortran-11) gfortran
+          fi
           export PATH=$PWD:$PATH
           echo "PATH=$PATH" >> "$GITHUB_ENV"
           GFORTRAN_LIB="\$(dirname \$(gfortran --print-file-name libgfortran.dylib))"
 
-          if [[ ${{ matrix.buildplat[3] }} == 'accelerate' ]]; then
-            echo CIBW_CONFIG_SETTINGS=\"setup-args=-Dblas=accelerate\" >> "$GITHUB_ENV"
-          fi
           # Add openblas libraries installed by cibw_before_build_macos.sh to path
           if [[ ${{ matrix.buildplat[2] }} == 'arm64' ]]; then
             LIB_PATH=/opt/arm64-builds/lib
