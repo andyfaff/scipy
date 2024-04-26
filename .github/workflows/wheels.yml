@@ -122,11 +122,13 @@ jobs:
           if [[ ${{ matrix.buildplat[3] }} == 'accelerate' ]]; then
             ln -s $(which gfortran-13) gfortran
             echo CIBW_CONFIG_SETTINGS=\"setup-args=-Dblas=accelerate\" >> "$GITHUB_ENV"
-          else
-            brew update
-            brew install gcc@11
-            ln -s $(which gfortran-11) gfortran
           fi
+          if [[ ${{ matrix.buildplat[4] }} == '10.9' ]]; then
+            brew update
+            brew install gcc@10
+            ln -s $(which gfortran-10) gfortran
+          fi
+
           export PATH=$PWD:$PATH
           echo "PATH=$PATH" >> "$GITHUB_ENV"
           GFORTRAN_LIB="\$(dirname \$(gfortran --print-file-name libgfortran.dylib))"
