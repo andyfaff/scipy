@@ -53,7 +53,7 @@ jobs:
 
       - name: Build
         run: |
-          python dev.py build --with-scipy-openblas -Csetup-args="-Duse-pythran=false"
+          python dev.py build --with-scipy-openblas -C-Duse-pythran=false
 
       - name: Test
         run: |
@@ -93,7 +93,7 @@ jobs:
 
       - name: Build
         run: |
-          python dev.py build --with-scipy-openblas -Csetup-args="-Duse-pythran=false"
+          python dev.py build --with-scipy-openblas -C-Duse-pythran=false
 
       - name: Test
         run: |
