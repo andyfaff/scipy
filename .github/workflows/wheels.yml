@@ -155,11 +155,11 @@ jobs:
           if [[ ${{ matrix.buildplat[3] }} == 'accelerate' ]]; then
             PREFIX=DYLD_LIBRARY_PATH=$(dirname $(gfortran --print-file-name libgfortran.dylib))
           else
-            echo wally
             # Use libgfortran and friends from the scipy-openblas wheel,
             # which should be exactly the same as the ones from gfortran
             # This will exclude the duplicates from gfortran in /opt/gfortran*
-            # EXCLUDE="-e /gfortran"
+            EXCLUDE="-e /gfortran"
+            PREFIX=DYLD_LIBRARY_PATH=$(python -c "import scipy_openblas32 as sob;print(sob.get_lib_dir())")/../.dylibs
           fi
           CIBW="$PREFIX delocate-listdeps {wheel} &&\
             $PREFIX delocate-wheel $EXCLUDE --require-archs \
