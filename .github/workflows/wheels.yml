@@ -159,6 +159,7 @@ jobs:
             # which should be exactly the same as the ones from gfortran
             # This will exclude the duplicates from gfortran in /opt/gfortran*
             EXCLUDE="-e /gfortran"
+            python -m pip install scipy-openblas32
             PREFIX=DYLD_LIBRARY_PATH=$(python -c "import scipy_openblas32 as sob;print(sob.get_lib_dir())")/../.dylibs
           fi
           CIBW="$PREFIX delocate-listdeps {wheel} &&\
