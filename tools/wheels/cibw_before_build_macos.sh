@@ -11,8 +11,6 @@ cat $PROJECT_DIR/tools/wheels/LICENSE_osx.txt >> $PROJECT_DIR/LICENSE.txt
 # Install GFortran + OpenBLAS
 
 if [[ $PLATFORM == "x86_64" ]]; then
-  #GFORTRAN=$(type -p gfortran-9)
-  #sudo ln -s $GFORTRAN /usr/local/bin/gfortran
   # same version of gfortran as the openblas-libs
   # https://github.com/MacPython/gfortran-install.git
   curl -L https://github.com/isuruf/gcc/releases/download/gcc-11.3.0-2/gfortran-darwin-x86_64-native.tar.gz -o gfortran.tar.gz
@@ -44,14 +42,12 @@ if [[ $PLATFORM == "x86_64" ]]; then
 fi
 
 if [[ $PLATFORM == "arm64" ]]; then
-  #GFORTRAN=$(type -p gfortran-9)
-  #sudo ln -s $GFORTRAN /usr/local/bin/gfortran
   # same version of gfortran as the openblas-libs
   # https://github.com/MacPython/gfortran-install.git
   curl -L https://github.com/isuruf/gcc/releases/download/gcc-11.3.0-2/gfortran-darwin-arm64-native.tar.gz -o gfortran.tar.gz
 
   GFORTRAN_SHA256=$(shasum -a 256 gfortran.tar.gz)
-  KNOWN_SHA256="0d5c118e5966d0fb9e7ddb49321f63cac1397ce8  gfortran.tar.gz"
+  KNOWN_SHA256="84364eee32ba843d883fb8124867e2bf61a0cd73b6416d9897ceff7b85a24604  gfortran.tar.gz"
   if [ "$GFORTRAN_SHA256" != "$KNOWN_SHA256" ]; then
       echo sha256 mismatch
       exit 1
