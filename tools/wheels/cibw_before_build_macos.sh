@@ -54,6 +54,9 @@ if [[ $PLATFORM == "arm64" ]]; then
   fi
 
   sudo mkdir -p /opt/
+  sudo mkdir -p /usr/local/lib
+  sudo mkdir -p /usr/local/bin
+
   # places gfortran in /opt/gfortran-darwin-arm64-native. There's then
   # bin, lib, include, libexec underneath that.
   sudo tar -xv -C /opt -f gfortran.tar.gz
