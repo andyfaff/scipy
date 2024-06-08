@@ -28,7 +28,7 @@ jobs:
     #        (b) it does run with Act locally (`github` doesn't exist there)
     if: >
       needs.get_commit_message.outputs.message == 1
-      && (github.repository == 'scipy/scipy' || github.repository == '')
+      && (github.repository == 'andyfaff/scipy' || github.repository == '')
     runs-on: windows-2019
     steps:
       - name: Checkout
@@ -54,7 +54,7 @@ jobs:
 
       - name: Build
         run: |
-          python dev.py build --with-scipy-openblas
+          python dev.py build --with-scipy-openblas -C-Duse-pythran=false
 
       - name: Test
         run: |
@@ -69,7 +69,7 @@ jobs:
     needs: get_commit_message
     if: >
       needs.get_commit_message.outputs.message == 1
-      && (github.repository == 'scipy/scipy' || github.repository == '')
+      && (github.repository == 'andyfaff/scipy' || github.repository == '')
     runs-on: windows-2019
     steps:
       - name: Checkout
@@ -97,7 +97,7 @@ jobs:
 
       - name: Build
         run: |
-          python dev.py build --with-scipy-openblas
+          python dev.py build --with-scipy-openblas -C-Duse-pythran=false
 
       - name: Test
         run: |
@@ -113,7 +113,7 @@ jobs:
     needs: get_commit_message
     if: >
       needs.get_commit_message.outputs.message == 1
-      && (github.repository == 'scipy/scipy' || github.repository == '')
+      && (github.repository == 'andyfaff/scipy' || github.repository == '')
     runs-on: windows-2019
     steps:
       - name: Checkout
