@@ -97,7 +97,6 @@ jobs:
           set FC=ifx
           call "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Auxiliary\Build\vcvars64.bat"
           python dev.py build -C-Duse-pythran=false -C--vsenv
-        shell: cmd
 
       # "import scipy; scipy.test();" fails because
       # scipy/sparse/linalg/_eigen/arpack crashes.
