@@ -36,7 +36,7 @@ jobs:
     #        (b) it does run with Act locally (`github` doesn't exist there)
     if: >
       needs.get_commit_message.outputs.message == 1
-      && (github.repository == 'scipy/scipy' || github.repository == '')
+      && (github.repository == 'andyfaff/scipy' || github.repository == '')
     runs-on: windows-2022
     defaults:
       run:
@@ -52,11 +52,12 @@ jobs:
         with:
           python-version: 3.11
           channels: conda-forge
-          channel-priority: true
+          channel-priority: strict
           use-only-tar-bz2: false
           miniforge-variant: Miniforge3
           miniforge-version: latest
-          use-mamba: true
+          auto-activate-base: true
+          activate-environment: ""
 
       - run: mamba --version
       - run: which python
