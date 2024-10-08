@@ -57,7 +57,7 @@ jobs:
           miniforge-variant: Miniforge3
           miniforge-version: latest
           auto-activate-base: true
-          activate-environment: ""
+          activate-environment: true
 
       - run: mamba --version
       - run: which python
