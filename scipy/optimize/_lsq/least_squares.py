@@ -41,13 +41,10 @@ FROM_MINPACK_TO_COMMON = {
 }
 
 
-def call_minpack(fun, x0, jac, ftol, xtol, gtol, max_nfev, x_scale, diff_step):
+def call_minpack(fun, x0, jac, ftol, xtol, gtol, max_nfev, x_scale, jac_method=None):
+    # jac_method indicates whether jac represents a user callable, or a callable
+    # that carries out numeric differentiation.
     n = x0.size
-
-    if diff_step is None:
-        epsfcn = EPS
-    else:
-        epsfcn = diff_step**2
 
     # Compute MINPACK's `diag`, which is inverse of our `x_scale` and
     # ``x_scale='jac'`` corresponds to ``diag=None``.
@@ -60,33 +57,43 @@ def call_minpack(fun, x0, jac, ftol, xtol, gtol, max_nfev, x_scale, diff_step):
     col_deriv = False
     factor = 100.0
 
-    if jac is None:
-        if max_nfev is None:
-            # n squared to account for Jacobian evaluations.
-            max_nfev = 100 * n * (n + 1)
-        x, info, status = _minpack._lmdif(
-            fun, x0, (), full_output, ftol, xtol, gtol,
-            max_nfev, epsfcn, factor, diag)
-    else:
-        if max_nfev is None:
-            max_nfev = 100 * n
-        x, info, status = _minpack._lmder(
-            fun, jac, x0, (), full_output, col_deriv,
-            ftol, xtol, gtol, max_nfev, factor, diag)
+    if max_nfev is None:
+        max_nfev = 100 * n
+
+    x, info, status = _minpack._lmder(
+        fun, jac, x0, (), full_output, col_deriv,
+        ftol, xtol, gtol, max_nfev, factor, diag)
 
     f = info['fvec']
-
-    if callable(jac):
-        J = jac(x)
-    else:
-        J = np.atleast_2d(approx_derivative(fun, x))
+    # TODO, potential optimisation by memoising this extra jac calculation
+    J = jac(x)
 
     cost = 0.5 * np.dot(f, f)
     g = J.T.dot(f)
     g_norm = norm(g, ord=np.inf)
 
-    nfev = info['nfev']
-    njev = info.get('njev', None)
+    if callable(jac_method):
+        # user supplied a callable ("analytic") jac
+        nfev = info['nfev']
+        njev = info.get('njev', None)
+    else:
+        # jac-method in ['2-point', '3-point', 'cs']
+        # Historically no analytic callable meant that `_minpack._lmdif` was used.
+        # Internally lmdif estimates jacobians by two-point finite differences,
+        # reporting the total number of function evaluations (nfev), with njev = 0.
+        # Now we have lifted that numeric differentiation into Python and
+        # lmder is used instead, with jac representing a wrapped version of our
+        # numerical differentiation. lmder reports nfev and njev. We need to convert
+        # njev into the number of times the numerical differentiation code has
+        # actually called `fun`, and set `njev = None`.
+        # For each two point forward difference the number of function evaluations
+        # is `len(x0) + 1`.
+        _njev = info['njev'] + 1    # the extra time is for the final jacobian position
+        nfev = info['nfev'] + _njev * (np.size(x0) + 1)
+        # we now add 2 to nfev because there is one evaluation of `fun` in the
+        # least_squares setup and one in the c code that wraps lmder.
+        nfev += 2
+        njev = None
 
     status = FROM_MINPACK_TO_COMMON[status]
     active_mask = np.zeros_like(x0, dtype=int)
@@ -867,7 +874,8 @@ def least_squares(
         tr_options = {}
 
     def fun_wrapped(x):
-        return np.atleast_1d(fun(x, *args, **kwargs))
+        f = np.atleast_1d(fun(x, *args, **kwargs))
+        return f
 
     f0 = fun_wrapped(x0)
 
@@ -925,8 +933,10 @@ def least_squares(
             if jac != '2-point':
                 warn(f"jac='{jac}' works equivalently to '2-point' for method='lm'.",
                      stacklevel=2)
-
-            J0 = jac_wrapped = None
+            # force evaluation of jacobian to be 2-point forward difference
+            jac = '2-point'
+            if diff_step is None:
+                diff_step = np.sqrt(EPS)
         else:
             if jac_sparsity is not None and tr_solver == 'exact':
                 raise ValueError("tr_solver='exact' is incompatible "
@@ -934,16 +944,21 @@ def least_squares(
 
             jac_sparsity = check_jac_sparsity(jac_sparsity, m, n)
 
-            def jac_wrapped(x, f):
-                J = approx_derivative(fun, x, rel_step=diff_step, method=jac,
-                                      f0=f, bounds=bounds, args=args,
-                                      kwargs=kwargs, sparsity=jac_sparsity,
-                                      workers=workers)
-                if J.ndim != 2:  # J is guaranteed not sparse.
-                    J = np.atleast_2d(J)
+        def jac_wrapped(x, f=None):
+            J = approx_derivative(fun, x, rel_step=diff_step, method=jac,
+                                  f0=f, bounds=bounds, args=args,
+                                  kwargs=kwargs, sparsity=jac_sparsity,
+                                  workers=workers)
+            if J.ndim != 2:  # J is guaranteed not sparse.
+                J = np.atleast_2d(J)
 
-                return J
+            return J
 
+        # evaluate the initial Jacobian
+        if method == 'lm':
+            # let minpack do the initial evaluation
+            J0 = None
+        else:
             J0 = jac_wrapped(x0, f0)
 
     if J0 is not None:
@@ -982,7 +997,7 @@ def least_squares(
             warn("Callback function specified, but not supported with `lm` method.",
                  stacklevel=2)
         result = call_minpack(fun_wrapped, x0, jac_wrapped, ftol, xtol, gtol,
-                              max_nfev, x_scale, diff_step)
+                              max_nfev, x_scale, jac_method=jac)
 
     elif method == 'trf':
         result = trf(fun_wrapped, jac_wrapped, x0, f0, J0, lb, ub, ftol, xtol,
