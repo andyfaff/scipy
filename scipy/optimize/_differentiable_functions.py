@@ -1,4 +1,6 @@
 from collections import namedtuple
+from functools import partial
+
 import numpy as np
 import scipy.sparse as sps
 from ._numdiff import approx_derivative, group_columns
@@ -404,6 +406,47 @@ class ScalarFunction:
         return self.f, self.g
 
 
+def _VectorFunWrapper(fun, x, ):
+    return np.atleast_1d(fun(x))
+
+
+class _VectorJacWrapper:
+    """
+    Wrapper class for gradient calculation
+    """
+    def __init__(
+            self,
+            jac,
+            fun=None,
+            finite_diff_options=None,
+            sparse_jacobian=False
+    ):
+        self.fun = fun
+        self.jac = jac
+        self.finite_diff_options = finite_diff_options
+        self.sparse_jacobian=sparse_jacobian
+        self.njev = 0
+        # number of function evaluations consumed by finite differences
+        self.nfev = 0
+
+    def __call__(self, x, f0=None, **kwds):
+        # Send a copy because the user may overwrite it.
+        # The user of this class might want `x` to remain unchanged.
+        if callable(self.jac):
+            j = np.atleast_1d(self.jac(np.copy(x)))
+        elif self.jac in FD_METHODS:
+            j, dct = approx_derivative(
+                self.fun,
+                x,
+                f0=f0,
+                **self.finite_diff_options,
+            )
+            self.nfev += dct['nfev']
+
+        self.njev += 1
+        return j
+
+
 class VectorFunction:
     """Vector function and its derivatives.
 
@@ -423,7 +466,7 @@ class VectorFunction:
     """
     def __init__(self, fun, x0, jac, hess,
                  finite_diff_rel_step, finite_diff_jac_sparsity,
-                 finite_diff_bounds, sparse_jacobian):
+                 finite_diff_bounds, sparse_jacobian, workers=None):
         if not callable(jac) and jac not in FD_METHODS:
             raise ValueError(f"`jac` must be either callable or one of {FD_METHODS}.")
 
@@ -456,6 +499,9 @@ class VectorFunction:
         self.J_updated = False
         self.H_updated = False
 
+        # normalize workers
+        workers = workers or map
+
         finite_diff_options = {}
         if jac in FD_METHODS:
             finite_diff_options["method"] = jac
@@ -465,11 +511,14 @@ class VectorFunction:
                 finite_diff_options["sparsity"] = (finite_diff_jac_sparsity,
                                                    sparsity_groups)
             finite_diff_options["bounds"] = finite_diff_bounds
+            finite_diff_options["workers"] = workers
             self.x_diff = np.copy(self.x)
         if hess in FD_METHODS:
             finite_diff_options["method"] = hess
             finite_diff_options["rel_step"] = finite_diff_rel_step
             finite_diff_options["as_linear_operator"] = True
+            finite_diff_options["workers"] = workers
+
             self.x_diff = np.copy(self.x)
         if jac in FD_METHODS and hess in FD_METHODS:
             raise ValueError("Whenever the Jacobian is estimated via "
@@ -477,12 +526,10 @@ class VectorFunction:
                              "be estimated using one of the quasi-Newton "
                              "strategies.")
 
-        # Function evaluation
-        def fun_wrapped(x):
-            self.nfev += 1
-            return np.atleast_1d(fun(x))
+        fun_wrapped = partial(_VectorFunWrapper, fun)
 
         def update_fun():
+            self.nfev += 1
             self.f = fun_wrapped(self.x)
 
         self._update_fun_impl = update_fun
