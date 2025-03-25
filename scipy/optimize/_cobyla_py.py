@@ -79,7 +79,7 @@ def fmin_cobyla(func, x0, cons, args=(), consargs=None, rhobeg=1.0,
 
     Suppose the function is being minimized over k variables. At the
     jth iteration the algorithm has k+1 points v_1, ..., v_(k+1),
-    an approximate solution x_j, and a radius RHO_j.
+    an approximate solution x_j, and a trust-region radius DELTA_j.
     (i.e., linear plus a constant) approximations to the objective
     function and constraint functions such that their function values
     agree with the linear approximation on the k+1 points v_1,.., v_(k+1).
@@ -89,10 +89,18 @@ def fmin_cobyla(func, x0, cons, args=(), consargs=None, rhobeg=1.0,
     However, the linear approximations are likely only good
     approximations near the current simplex, so the linear program is
     given the further requirement that the solution, which
-    will become x_(j+1), must be within RHO_j from x_j. RHO_j only
-    decreases, never increases. The initial RHO_j is rhobeg and the
-    final RHO_j is rhoend. In this way COBYLA's iterations behave
-    like a trust region algorithm.
+    will become x_(j+1), must be within DELTA_j from x_j, which is known 
+    as a trust region. The initial DELTA_j is rhobeg and the final DELTA_j 
+    is rhoend. Note that Powell's implementation of COBYLA uses a RHO_j
+    rather than DELTA_j as the trust-region radius, and RHO_j is never 
+    increased. DELTA_j does not exist in Powell's COBYLA code. Following 
+    the idea in Powell's other solvers (UOBYQA, NEWUOA, BOBYQA, LINCOA), 
+    the PRIMA implementation uses DELTA_j as the trust-region radius, 
+    while RHO_j works a lower bound of DELTA_j and indicates the current 
+    resolution of the algorithm. DELTA_j is updated in a classical way of 
+    updating the trust-region radius subject to DELTA_j >= RHO_j, whereas 
+    RHO_j is updated as in Powell's old implementation of COBYLA and is 
+    never increased. The new implementation improves the performance of COBYLA.
 
     Additionally, the linear program may be inconsistent, or the
     approximation may give poor improvement. For details about
@@ -106,12 +114,6 @@ def fmin_cobyla(func, x0, cons, args=(), consargs=None, rhobeg=1.0,
     the objective and constraint functions by linear interpolation.", in
     Advances in Optimization and Numerical Analysis, eds. S. Gomez and
     J-P Hennart, Kluwer Academic (Dordrecht), pp. 51-67
-
-    Powell M.J.D. (1998), "Direct search algorithms for optimization
-    calculations", Acta Numerica 7, 287-336
-
-    Powell M.J.D. (2007), "A view of algorithms for optimization without
-    derivatives", Cambridge University Technical Report DAMTP 2007/NA03
 
     Zhang Z. (2023), "PRIMA: Reference Implementation for Powell's Methods with
     Modernization and Amelioration", http://www.libprima.net,
