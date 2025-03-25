@@ -89,8 +89,8 @@ def fmin_cobyla(func, x0, cons, args=(), consargs=None, rhobeg=1.0,
     However, the linear approximations are likely only good
     approximations near the current simplex, so the linear program is
     given the further requirement that the solution, which
-    will become x_(j+1), must be within DELTA_j from x_j, which is known 
-    as a trust region. The initial DELTA_j is rhobeg and the final DELTA_j 
+    will become x_(j+1), must be within DELTA_j from x_j (the trust region). 
+    The initial DELTA_j is rhobeg and the final DELTA_j 
     is rhoend. Note that Powell's implementation of COBYLA uses a RHO_j
     rather than DELTA_j as the trust-region radius, and RHO_j is never 
     increased. DELTA_j does not exist in Powell's COBYLA code. Following 
