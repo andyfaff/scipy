@@ -25,9 +25,10 @@ def fmin_cobyla(func, x0, cons, args=(), consargs=None, rhobeg=1.0,
                 rhoend=1e-4, maxfun=1000, disp=None, catol=2e-4,
                 *, callback=None):
     """
-    Minimize a function using the Constrained Optimization By Linear
+    Minimize a function using M.J.D. Powell's Constrained Optimization By Linear
     Approximation (COBYLA) method. This method uses the pure-python implementation
-    of the algorithm from PRIMA.
+    of the algorithm from the PRIMA package of Zaikun Zhang. This implementation
+    contains bug fixes and improvements over the old one by Powell.
 
     Parameters
     ----------
