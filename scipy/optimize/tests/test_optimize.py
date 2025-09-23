@@ -3431,16 +3431,15 @@ def test_sparse_hessian(method, sparse_type):
 @pytest.mark.parametrize(
     'method',
     [
-    # ['l-bfgs-b',
-     # 'bfgs',
-     # 'slsqp',
-     # 'trust-constr',
+    ['l-bfgs-b',
+     'bfgs',
+     'slsqp',
+     'trust-constr',
      'Newton-CG',
      'CG',
-     ])
-     # 'tnc',
-     # 'trust-ncg',
-     # 'trust-krylov'])
+     'tnc',
+     'trust-ncg',
+     'trust-krylov'])
 class TestWorkers:
 
     def setup_method(self):
