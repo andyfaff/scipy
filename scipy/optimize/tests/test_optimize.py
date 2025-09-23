@@ -3435,7 +3435,7 @@ def test_sparse_hessian(method, sparse_type):
      # 'bfgs',
      # 'slsqp',
      # 'trust-constr',
-     # 'Newton-CG',
+     'Newton-CG',
      'CG',
      ])
      # 'tnc',
@@ -3456,10 +3456,15 @@ class TestWorkers:
             kwds['jac'] = rosen_der
             kwds['hess'] = '2-point'
 
+        from multiprocessing.util import log_to_stderr
+        import logging
+        log_to_stderr(logging.DEBUG)
         with MapWrapper(workers) as mf:
             res = optimize.minimize(
                 rosen, self.x0, options={"workers":mf}, method=method, **kwds
             )
+        log_to_stderr(logging.NOTSET)
+
         res_default = optimize.minimize(
             rosen, self.x0, method=method, **kwds
         )
