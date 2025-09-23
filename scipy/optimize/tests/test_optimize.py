@@ -3430,7 +3430,6 @@ def test_sparse_hessian(method, sparse_type):
 @pytest.mark.parametrize('workers', [None, 2])
 @pytest.mark.parametrize(
     'method',
-    [
     ['l-bfgs-b',
      'bfgs',
      'slsqp',
