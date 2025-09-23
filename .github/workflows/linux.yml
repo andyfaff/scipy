@@ -364,7 +364,7 @@ jobs:
       run: |
         export OPENBLAS_NUM_THREADS=1
         export SCIPY_ARRAY_API=1
-        spin test --no-build -s optimize --coverage -j2 --mode full -- --cov --cov-report term-missing
+        spin test --no-build --coverage -j2 --mode full -- --cov --cov-report term-missing
 
   #################################################################################
   linux_32bit:
