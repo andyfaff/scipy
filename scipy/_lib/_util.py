@@ -666,7 +666,6 @@ class MapWrapper:
         if self._own_pool:
             self.pool.close()
             self.pool.terminate()
-            self.pool.join()
 
     def __call__(self, func, iterable):
         # only accept one iterable because that's all Pool.map accepts
