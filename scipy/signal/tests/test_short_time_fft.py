@@ -98,6 +98,11 @@ def test_issue2370(win_name, m, hop, sym_win, scaled=True):
     xp_assert_equal(qd2, qd1)
     assert qd1 is not qd2  # ensure mutating qd1 is not the problem
 
+    print(np.show_config())
+    with np.printoptions(floatmode='unique'):
+        print(qd1)
+        print(qd2)
+
     # Taken from closest_STFT_dual_window (qd1 == qd2):
     denominator1 = qd1.T.real @ qd1.real + qd1.T.imag @ qd1.imag  # always >= 0
     denominator2 = qd2.T.real @ qd2.real + qd2.T.imag @ qd2.imag  # always >= 0
