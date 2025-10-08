@@ -86,7 +86,7 @@ def test_closest_STFT_dual_window_exceptions():
 @pytest.mark.parametrize('hop', (8, 9))
 @pytest.mark.parametrize('m', (16, 17))
 @pytest.mark.parametrize('win_name', ('hann', 'hamming'))
-def test_issue2370(win_name, m, hop, sym_win, scaled=True):
+def test_issue23710(win_name, m, hop, sym_win, scaled=True):
     """Analyze macos15-intel problems (issue 23710) """
     win = get_window(win_name, m, not sym_win)
     d_win = np.ones_like(win)
@@ -98,10 +98,18 @@ def test_issue2370(win_name, m, hop, sym_win, scaled=True):
     xp_assert_equal(qd2, qd1)
     assert qd1 is not qd2  # ensure mutating qd1 is not the problem
 
-    print(np.show_config())
     with np.printoptions(floatmode='unique'):
         print(qd1)
         print(qd2)
+        assert np.all(qd1.imag == 0)
+        assert np.all(qd2.imag == 0)
+        xp_assert_equal(qd2.real, qd1.real)
+        xp_assert_equal(qd2.imag, qd1.imag)
+
+    # Taken from closest_STFT_dual_window (qd1 == qd2):
+    denominator1 = qd1.T.real @ qd1.real
+    denominator2 = qd2.T.real @ qd2.real
+    xp_assert_equal(denominator2, denominator1)  # fails on macos15-intel
 
     # Taken from closest_STFT_dual_window (qd1 == qd2):
     denominator1 = qd1.T.real @ qd1.real + qd1.T.imag @ qd1.imag  # always >= 0
