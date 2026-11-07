@@ -413,7 +413,7 @@ jobs:
     needs: get_commit_message
     if: >
       needs.get_commit_message.outputs.message == 1
-      && (github.repository == 'scipy/scipy' || github.repository == '')
+      && (github.repository == 'andyfaff/scipy' || github.repository == '')
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -440,7 +440,8 @@ jobs:
           python -m pip install --upgrade pip
           python -m pip install --group build --group dev-cli --group openblas32
           python -m pip install --pre --upgrade --group coverage
-          python -m pip install --pre --upgrade --timeout=60 -i https://pypi.anaconda.org/scientific-python-nightly-wheels/simple numpy
+          #          python -m pip install --pre --upgrade --timeout=60 -i https://pypi.anaconda.org/scientific-python-nightly-wheels/simple numpy
+          python -m pip install numpy
 
       - name: Set up ccache
         uses: ./.github/ccache
